@@ -6,6 +6,15 @@ import { useState, useEffect } from "react";
 // STEP PROGRESS BAR
 // ============================================
 function StepProgress({ currentStep }) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 480);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const steps = [
     { number: 1, label: "Profile" },
     { number: 2, label: "Idea" },
@@ -13,22 +22,31 @@ function StepProgress({ currentStep }) {
     { number: 4, label: "Evaluation" },
   ];
 
+  const circleSize = isMobile ? 28 : 40;
+  const circleFontSize = isMobile ? 11 : 14;
+  const connectorWidth = isMobile ? 28 : 80;
+  const connectorMargin = isMobile ? "0 4px" : "0 12px";
+  const labelFontSize = isMobile ? 9 : 12;
+  const labelMarginTop = isMobile ? 5 : 8;
+  const containerPadding = isMobile ? "20px 8px" : "32px 0";
+
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, padding: "32px 0" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, padding: containerPadding }}>
       {steps.map((step, index) => (
         <div key={step.number} style={{ display: "flex", alignItems: "center" }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div
               style={{
-                width: 40,
-                height: 40,
+                width: circleSize,
+                height: circleSize,
                 borderRadius: "50%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 14,
+                fontSize: circleFontSize,
                 fontWeight: 600,
                 transition: "all 0.3s",
+                flexShrink: 0,
                 ...(currentStep > step.number
                   ? { background: "rgba(16,185,129,0.2)", color: "#34d399", border: "2px solid rgba(16,185,129,0.5)" }
                   : currentStep === step.number
@@ -40,10 +58,11 @@ function StepProgress({ currentStep }) {
             </div>
             <span
               style={{
-                fontSize: 12,
-                marginTop: 8,
+                fontSize: labelFontSize,
+                marginTop: labelMarginTop,
                 fontWeight: 500,
                 color: currentStep >= step.number ? "#d4d4d4" : "#525252",
+                whiteSpace: "nowrap",
               }}
             >
               {step.label}
@@ -52,13 +71,14 @@ function StepProgress({ currentStep }) {
           {index < steps.length - 1 && (
             <div
               style={{
-                width: 80,
+                width: connectorWidth,
                 height: 2,
-                margin: "0 12px",
-                marginBottom: 24,
+                margin: connectorMargin,
+                marginBottom: isMobile ? 18 : 24,
                 borderRadius: 2,
                 background: currentStep > step.number ? "rgba(16,185,129,0.5)" : "#262626",
                 transition: "all 0.3s",
+                flexShrink: 0,
               }}
             />
           )}
@@ -194,6 +214,15 @@ function Card({ children, style = {} }) {
 // PAGE CONTAINER - ensures padding on ALL screens
 // ============================================
 function PageContainer({ children, wide = false }) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 480);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   return (
     <div
       style={{
@@ -201,8 +230,8 @@ function PageContainer({ children, wide = false }) {
         maxWidth: wide ? 960 : 640,
         marginLeft: "auto",
         marginRight: "auto",
-        paddingLeft: 32,
-        paddingRight: 32,
+        paddingLeft: isMobile ? 16 : 32,
+        paddingRight: isMobile ? 16 : 32,
       }}
     >
       {children}
