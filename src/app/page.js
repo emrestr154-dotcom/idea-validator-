@@ -242,11 +242,57 @@ function PageContainer({ children, wide = false }) {
 // ============================================
 // MAIN APP
 // ============================================
+// ============================================
+// EVALUATION LIMIT HELPERS
+// ============================================
+const EVAL_LIMIT = 3;
+const EVAL_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function getRecentEvals() {
+  try {
+    const raw = localStorage.getItem("iv_eval_timestamps");
+    if (!raw) return [];
+    const timestamps = JSON.parse(raw);
+    const cutoff = Date.now() - EVAL_WINDOW_MS;
+    return timestamps.filter((t) => t > cutoff);
+  } catch {
+    return [];
+  }
+}
+
+function recordEval() {
+  const recent = getRecentEvals();
+  recent.push(Date.now());
+  localStorage.setItem("iv_eval_timestamps", JSON.stringify(recent));
+}
+
+function getEvalsRemaining() {
+  return Math.max(0, EVAL_LIMIT - getRecentEvals().length);
+}
+
+function getNextResetTime() {
+  const recent = getRecentEvals();
+  if (recent.length === 0) return null;
+  const oldest = Math.min(...recent);
+  const resetsAt = new Date(oldest + EVAL_WINDOW_MS);
+  const now = new Date();
+  const diffMs = resetsAt - now;
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h`;
+  return "< 1h";
+}
+
+// ============================================
+// MAIN APP
+// ============================================
 export default function Home() {
   const [currentScreen, setCurrentScreen] = useState("profile");
   const [profile, setProfile] = useState({ coding: "", ai: "", education: "" });
+  const [evalsRemaining, setEvalsRemaining] = useState(EVAL_LIMIT);
 
-  // Load saved profile after mount (avoids hydration mismatch)
+  // Load saved profile + eval count after mount (avoids hydration mismatch)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const saved = localStorage.getItem("iv_profile");
@@ -254,6 +300,7 @@ export default function Home() {
       setProfile(JSON.parse(saved));
       setCurrentScreen("input");
     }
+    setEvalsRemaining(getEvalsRemaining());
   }, []);
   const [idea, setIdea] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -286,6 +333,14 @@ export default function Home() {
 
   const handleAnalyze = async () => {
     if (!idea.trim()) return;
+
+    // Check evaluation limit
+    const remaining = getEvalsRemaining();
+    if (remaining <= 0) {
+      setError(`You've used all ${EVAL_LIMIT} free evaluations this week. Next slot opens in ${getNextResetTime()}.`);
+      return;
+    }
+
     setIsAnalyzing(true);
     setError("");
     try {
@@ -300,6 +355,11 @@ export default function Home() {
         setError(data.ethics_message);
         return;
       }
+
+      // Record successful evaluation
+      recordEval();
+      setEvalsRemaining(getEvalsRemaining());
+
       setAnalysis(data);
       setEditedPhases(null);
       setExpandedPhases({});
@@ -545,21 +605,42 @@ export default function Home() {
               </span>
               <button
                 onClick={handleAnalyze}
-                disabled={!idea.trim() || isAnalyzing}
+                disabled={!idea.trim() || isAnalyzing || evalsRemaining <= 0}
                 style={{
                   padding: "12px 32px",
                   borderRadius: 12,
                   fontSize: 14,
                   fontWeight: 600,
                   border: "none",
-                  cursor: !idea.trim() || isAnalyzing ? "not-allowed" : "pointer",
-                  ...(!idea.trim() || isAnalyzing
+                  cursor: !idea.trim() || isAnalyzing || evalsRemaining <= 0 ? "not-allowed" : "pointer",
+                  ...(!idea.trim() || isAnalyzing || evalsRemaining <= 0
                     ? { background: "rgba(38,38,38,0.6)", color: "#525252" }
                     : { background: "#fff", color: "#0a0a0a" }),
                 }}
               >
-                {isAnalyzing ? "Analyzing..." : "Analyze Idea"}
+                {isAnalyzing ? "Analyzing..." : evalsRemaining <= 0 ? "Limit Reached" : "Analyze Idea"}
               </button>
+            </div>
+
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              marginBottom: 24,
+              padding: "10px 16px",
+              borderRadius: 12,
+              background: evalsRemaining <= 0 ? "rgba(239,68,68,0.08)" : evalsRemaining === 1 ? "rgba(245,158,11,0.08)" : "rgba(38,38,38,0.4)",
+              border: `1px solid ${evalsRemaining <= 0 ? "rgba(239,68,68,0.2)" : evalsRemaining === 1 ? "rgba(245,158,11,0.2)" : "rgba(64,64,64,0.3)"}`,
+            }}>
+              <span style={{
+                fontSize: 13,
+                color: evalsRemaining <= 0 ? "#f87171" : evalsRemaining === 1 ? "#fbbf24" : "#737373",
+              }}>
+                {evalsRemaining <= 0
+                  ? `No evaluations remaining this week. Next slot opens in ${getNextResetTime()}.`
+                  : `${evalsRemaining} of ${EVAL_LIMIT} free evaluations remaining this week`}
+              </span>
             </div>
 
             {isAnalyzing && (
@@ -656,63 +737,20 @@ export default function Home() {
               <SectionHeader icon="🌐" title="Competition Landscape" subtitle="Similar existing products in the market" />
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16, marginBottom: 16 }}>
-                {analysis.competition.competitors.map((comp, i) => {
-                  const sourceColors = {
-                    github: { bg: "rgba(110,84,148,0.15)", color: "#a78bfa", border: "rgba(110,84,148,0.3)", label: "GitHub" },
-                    google: { bg: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "rgba(59,130,246,0.3)", label: "Google" },
-                    llm: { bg: "rgba(115,115,115,0.15)", color: "#a3a3a3", border: "rgba(115,115,115,0.3)", label: "AI" },
-                  };
-                  const src = sourceColors[comp.source] || sourceColors.llm;
-
-                  return (
-                    <Card key={i} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#f5f5f5", margin: 0, flex: 1, minWidth: 0 }}>{comp.name}</h3>
-                        <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-                          <span style={{
-                            fontSize: 10,
-                            fontWeight: 600,
-                            padding: "2px 8px",
-                            borderRadius: 9999,
-                            border: `1px solid ${src.border}`,
-                            background: src.bg,
-                            color: src.color,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            whiteSpace: "nowrap",
-                          }}>
-                            {src.label}
-                          </span>
-                          <StatusBadge status={comp.status} />
-                        </div>
-                      </div>
-                      <p style={{ fontSize: 14, color: "#a3a3a3", lineHeight: 1.6, margin: 0, flex: 1 }}>
-                        {comp.description}
-                      </p>
-                      <p style={{ fontSize: 12, color: "#34d399", fontWeight: 600, lineHeight: 1.5, margin: 0 }}>
-                        {comp.outcome}
-                      </p>
-                      {comp.url && (
-                        <a
-                          href={comp.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            fontSize: 12,
-                            color: "#60a5fa",
-                            textDecoration: "none",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                            marginTop: 2,
-                          }}
-                        >
-                          Visit →
-                        </a>
-                      )}
-                    </Card>
-                  );
-                })}
+                {analysis.competition.competitors.map((comp, i) => (
+                  <Card key={i} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <h3 style={{ fontSize: 14, fontWeight: 700, color: "#f5f5f5", margin: 0 }}>{comp.name}</h3>
+                      <StatusBadge status={comp.status} />
+                    </div>
+                    <p style={{ fontSize: 14, color: "#a3a3a3", lineHeight: 1.6, margin: 0, flex: 1 }}>
+                      {comp.description}
+                    </p>
+                    <p style={{ fontSize: 12, color: "#34d399", fontWeight: 600, lineHeight: 1.5, margin: 0 }}>
+                      {comp.outcome}
+                    </p>
+                  </Card>
+                ))}
               </div>
 
               {analysis.competition.differentiation && (
@@ -726,38 +764,21 @@ export default function Home() {
                 </Card>
               )}
 
-              {analysis.competition.data_source === "verified" ? (
-                <div style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
-                  background: "rgba(16,185,129,0.06)",
-                  border: "1px solid rgba(16,185,129,0.2)",
-                  borderRadius: 12,
-                  padding: "14px 20px",
-                }}>
-                  <span style={{ color: "#34d399", fontSize: 14, marginTop: 2 }}>✓</span>
-                  <p style={{ fontSize: 12, color: "#a3a3a3", lineHeight: 1.5, margin: 0 }}>
-                    <span style={{ color: "#34d399", fontWeight: 600 }}>Verified Sources</span> — Competitors were found via live GitHub and Google searches. Some AI-supplemented entries may also be included.
-                  </p>
-                </div>
-              ) : (
-                <div style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
-                  background: "rgba(23,23,23,0.3)",
-                  border: "1px solid rgba(38,38,38,0.4)",
-                  borderRadius: 12,
-                  padding: "14px 20px",
-                }}>
-                  <span style={{ color: "rgba(245,158,11,0.7)", fontSize: 14, marginTop: 2 }}>⚠</span>
-                  <p style={{ fontSize: 12, color: "#737373", lineHeight: 1.5, margin: 0 }}>
-                    This competition data is AI-generated and may not reflect real-time
-                    market conditions. Use it as a directional guide, not a definitive source.
-                  </p>
-                </div>
-              )}
+              <div style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+                background: "rgba(23,23,23,0.3)",
+                border: "1px solid rgba(38,38,38,0.4)",
+                borderRadius: 12,
+                padding: "14px 20px",
+              }}>
+                <span style={{ color: "rgba(245,158,11,0.7)", fontSize: 14, marginTop: 2 }}>⚠</span>
+                <p style={{ fontSize: 12, color: "#737373", lineHeight: 1.5, margin: 0 }}>
+                  This competition data is AI-generated and may not reflect real-time
+                  market conditions. Use it as a directional guide, not a definitive source.
+                </p>
+              </div>
             </section>
 
             {/* Phases */}
@@ -1117,6 +1138,7 @@ export default function Home() {
                 setIdea("");
                 setEditedPhases(null);
                 setExpandedPhases({});
+                setEvalsRemaining(getEvalsRemaining());
               }}
               style={{
                 width: "100%",
