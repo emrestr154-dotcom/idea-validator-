@@ -673,7 +673,7 @@ export default function Home() {
   }
 
   // ==========================================
-  // SCREEN 2: COMPETITION + PHASES
+  // SCREEN 2: COMPETITION + EVALUATION
   // ==========================================
   if (currentScreen === "results1" && analysis) {
     return (
@@ -711,6 +711,24 @@ export default function Home() {
                 ⚠️ This idea includes components outside our primary evaluation scope (hardware, physical services, or non-software elements). Scores evaluate the software and AI components. Challenges specific to physical components may not be fully captured.
               </div>
             )}
+
+            {/* Classification Tag */}
+            <div style={{ marginBottom: 24, display: "flex", gap: 8 }}>
+              <span style={{
+                display: "inline-block",
+                fontSize: 11,
+                fontWeight: 600,
+                padding: "4px 10px",
+                borderRadius: 9999,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                ...(analysis.classification === "social_impact"
+                  ? { background: "rgba(16,185,129,0.12)", color: "#34d399", border: "1px solid rgba(16,185,129,0.25)" }
+                  : { background: "rgba(59,130,246,0.12)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.25)" }),
+              }}>
+                {analysis.classification === "social_impact" ? "Social Impact" : "Commercial"}
+              </span>
+            </div>
 
             {/* Competition */}
             <section style={{ marginBottom: 48 }}>
@@ -818,6 +836,267 @@ export default function Home() {
               )}
             </section>
 
+            {/* Final Evaluation */}
+            <section style={{ marginBottom: 48 }}>
+              <SectionHeader icon="📊" title="Final Evaluation" subtitle="Scored analysis of your AI product idea" />
+
+              {/* Overall score */}
+              <Card style={{ padding: 32, textAlign: "center", marginBottom: 16 }}>
+                <p style={{ fontSize: 12, color: "#737373", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, margin: "0 0 4px 0" }}>
+                  Overall Idea Potential
+                </p>
+                <p style={{ fontSize: 10, color: "#404040", margin: "0 0 12px 0" }}>
+                  Weighted average · Higher is better
+                </p>
+                <p style={{ fontSize: 64, fontWeight: 700, color: "#f5f5f5", margin: 0, lineHeight: 1 }}>
+                  {analysis.evaluation.overall_score.toFixed(1)}
+                  <span style={{ fontSize: 20, fontWeight: 400, color: "#525252" }}>/10</span>
+                </p>
+              </Card>
+
+              {/* Metrics */}
+              <Card style={{ padding: 32, marginBottom: 16 }}>
+                <ScoreBar
+                  name="Market Demand"
+                  score={analysis.evaluation.market_demand.score}
+                  explanation={analysis.evaluation.market_demand.explanation}
+                  weight="30%"
+                  notes={[
+                    analysis.evaluation.market_demand.geographic_note,
+                    analysis.evaluation.market_demand.trajectory_note,
+                  ].filter(Boolean)}
+                />
+                <ScoreBar
+                  name={analysis.evaluation.monetization.label || "Monetization Potential"}
+                  score={analysis.evaluation.monetization.score}
+                  explanation={analysis.evaluation.monetization.explanation}
+                  weight="25%"
+                />
+                <ScoreBar
+                  name="Originality"
+                  score={analysis.evaluation.originality.score}
+                  explanation={analysis.evaluation.originality.explanation}
+                  weight="25%"
+                />
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#e5e5e5" }}>
+                      Technical Complexity
+                      <span style={{ fontSize: 11, fontWeight: 400, color: "#525252", marginLeft: 8 }}>20% · inverted</span>
+                    </span>
+                    <span style={{
+                      fontSize: 14,
+                      fontFamily: "monospace",
+                      fontWeight: 600,
+                      color: analysis.evaluation.technical_complexity.score >= 8 ? "#ef4444"
+                        : analysis.evaluation.technical_complexity.score >= 6 ? "#f59e0b"
+                        : analysis.evaluation.technical_complexity.score >= 4 ? "#3b82f6"
+                        : "#10b981",
+                    }}>
+                      {analysis.evaluation.technical_complexity.score.toFixed(1)}/10
+                    </span>
+                  </div>
+                  <div style={{ width: "100%", height: 8, background: "#262626", borderRadius: 9999, overflow: "hidden" }}>
+                    <div style={{
+                      height: "100%",
+                      borderRadius: 9999,
+                      background: analysis.evaluation.technical_complexity.score >= 8 ? "#ef4444"
+                        : analysis.evaluation.technical_complexity.score >= 6 ? "#f59e0b"
+                        : analysis.evaluation.technical_complexity.score >= 4 ? "#3b82f6"
+                        : "#10b981",
+                      width: `${(analysis.evaluation.technical_complexity.score / 10) * 100}%`,
+                      transition: "width 1s ease-out",
+                    }} />
+                  </div>
+                  <p style={{ fontSize: 12, color: "#737373", marginTop: 8, lineHeight: 1.5 }}>
+                    {analysis.evaluation.technical_complexity.base_score_explanation}
+                    {" "}{analysis.evaluation.technical_complexity.adjustment_explanation}
+                    {" "}{analysis.evaluation.technical_complexity.explanation}
+                  </p>
+                  {analysis.evaluation.technical_complexity.incremental_note && (
+                    <p style={{ fontSize: 11, color: "#525252", marginTop: 4, lineHeight: 1.4, fontStyle: "italic" }}>
+                      {analysis.evaluation.technical_complexity.incremental_note}
+                    </p>
+                  )}
+                </div>
+              </Card>
+
+              {/* Marketplace Note */}
+              {analysis.evaluation.marketplace_note && (
+                <Card style={{ padding: 24, marginBottom: 16, background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.15)" }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "#60a5fa", margin: "0 0 6px 0", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Marketplace Note
+                  </p>
+                  <p style={{ fontSize: 13, color: "#a3a3a3", lineHeight: 1.6, margin: 0 }}>
+                    {analysis.evaluation.marketplace_note}
+                  </p>
+                </Card>
+              )}
+
+              {/* Summary */}
+              <Card style={{ padding: 32 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: "#e5e5e5", margin: "0 0 12px 0" }}>Summary</h3>
+                <p style={{ fontSize: 14, color: "#a3a3a3", lineHeight: 1.7, margin: 0 }}>
+                  {analysis.evaluation.summary}
+                </p>
+              </Card>
+            </section>
+
+
+            <button
+              onClick={() => setCurrentScreen("results2")}
+              style={{
+                width: "100%",
+                padding: "14px 0",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                border: "none",
+                background: "#fff",
+                color: "#0a0a0a",
+                cursor: "pointer",
+              }}
+            >
+              Continue to Execution Plan
+            </button>
+          </PageContainer>
+        </main>
+
+        <footer style={footerStyle}>
+          <PageContainer wide>
+            <p style={{ fontSize: 12, color: "#404040", margin: 0 }}>
+              IdeaValidator — All analysis is AI-generated. Use as a guide, not a definitive assessment.
+            </p>
+          </PageContainer>
+        </footer>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // SCREEN 3: EXECUTION + TOOLS + ESTIMATES
+  // ==========================================
+  if (currentScreen === "results2" && analysis) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column" }}>
+        <header style={headerStyle}>
+          <PageContainer wide>
+            <div style={{ padding: "16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h1 style={{ fontSize: 14, fontFamily: "monospace", letterSpacing: "0.1em", textTransform: "uppercase", color: "#525252", margin: 0 }}>
+                Idea Validator
+              </h1>
+              <button onClick={() => setCurrentScreen("results1")} style={{ fontSize: 12, color: "#525252", background: "none", border: "none", cursor: "pointer" }}>
+                ← Back to evaluation
+              </button>
+            </div>
+          </PageContainer>
+        </header>
+
+        <StepProgress currentStep={getStepNumber()} />
+
+        <main style={{ flex: 1, paddingBottom: 64 }}>
+          <PageContainer wide>
+
+            {/* Tools */}
+            <section style={{ marginBottom: 48 }}>
+              <SectionHeader icon="🔧" title="Tool Recommendations" subtitle="Platforms and tools to help you build" />
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+                {analysis.tools.map((tool, i) => (
+                  <Card key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div>
+                      <h3 style={{ fontSize: 14, fontWeight: 700, color: "#f5f5f5", margin: 0 }}>{tool.name}</h3>
+                      <p style={{ fontSize: 12, color: "#737373", margin: "4px 0 0 0", fontWeight: 500 }}>{tool.category}</p>
+                    </div>
+                    <p style={{ fontSize: 14, color: "rgba(96,165,250,0.8)", lineHeight: 1.6, margin: 0 }}>
+                      {tool.description}
+                    </p>
+                  </Card>
+                ))}
+              </div>
+            </section>
+
+            {/* Time & Difficulty */}
+            <section style={{ marginBottom: 48 }}>
+              <SectionHeader icon="⏱" title="Time & Difficulty" subtitle="Calibrated to your experience level" />
+
+              <Card style={{ padding: 32 }}>
+                <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", marginBottom: 24 }}>
+                  <div style={{ textAlign: "center" }}>
+                    <p style={{ fontSize: 12, color: "#737373", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, margin: "0 0 8px 0" }}>
+                      Estimated Duration
+                    </p>
+                    <p style={{ fontSize: 24, fontWeight: 700, color: "#f5f5f5", margin: 0 }}>
+                      {analysis.estimates.duration}
+                    </p>
+                  </div>
+                  <div style={{ width: 1, height: 64, background: "#262626" }} />
+                  <div style={{ textAlign: "center" }}>
+                    <p style={{ fontSize: 12, color: "#737373", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, margin: "0 0 8px 0" }}>
+                      Difficulty Level
+                    </p>
+                    <span style={{
+                      display: "inline-block",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      padding: "6px 16px",
+                      borderRadius: 9999,
+                      ...(analysis.estimates.difficulty === "Very Hard"
+                        ? { background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)" }
+                        : analysis.estimates.difficulty === "Hard"
+                        ? { background: "rgba(245,158,11,0.15)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.3)" }
+                        : analysis.estimates.difficulty === "Moderate"
+                        ? { background: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.3)" }
+                        : { background: "rgba(16,185,129,0.15)", color: "#34d399", border: "1px solid rgba(16,185,129,0.3)" }),
+                    }}>
+                      {analysis.estimates.difficulty}
+                    </span>
+                  </div>
+                </div>
+                <p style={{ fontSize: 14, color: "#a3a3a3", textAlign: "center", lineHeight: 1.6, maxWidth: 560, margin: "0 auto" }}>
+                  {analysis.estimates.explanation}
+                </p>
+              </Card>
+            </section>
+
+            <button
+              onClick={() => {
+                setCurrentScreen("input");
+                setAnalysis(null);
+                setIdea("");
+                setEditedPhases(null);
+                setExpandedPhases({});
+                setEvalsRemaining(getEvalsRemaining());
+              }}
+              style={{
+                width: "100%",
+                padding: "14px 0",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                border: "1px solid rgba(64,64,64,0.6)",
+                background: "transparent",
+                color: "#a3a3a3",
+                cursor: "pointer",
+              }}
+            >
+              Analyze Another Idea
+            </button>
+          </PageContainer>
+        </main>
+
+        <footer style={footerStyle}>
+          <PageContainer wide>
+            <p style={{ fontSize: 12, color: "#404040", margin: 0 }}>
+              IdeaValidator — All analysis is AI-generated. Use as a guide, not a definitive assessment.
+            </p>
+          </PageContainer>
+        </footer>
+      </div>
+    );
+  }
+
+  return null;
             {/* Phases */}
             <section style={{ marginBottom: 48 }}>
               <SectionHeader icon="⚙" title="Execution Phases" subtitle="Recommended roadmap for building your idea" />
@@ -946,264 +1225,5 @@ export default function Home() {
               </div>
             </section>
 
-            <button
-              onClick={() => setCurrentScreen("results2")}
-              style={{
-                width: "100%",
-                padding: "14px 0",
-                borderRadius: 12,
-                fontSize: 14,
-                fontWeight: 600,
-                border: "none",
-                background: "#fff",
-                color: "#0a0a0a",
-                cursor: "pointer",
-              }}
-            >
-              Continue to Tools & Evaluation
-            </button>
-          </PageContainer>
-        </main>
 
-        <footer style={footerStyle}>
-          <PageContainer wide>
-            <p style={{ fontSize: 12, color: "#404040", margin: 0 }}>
-              IdeaValidator — All analysis is AI-generated. Use as a guide, not a definitive assessment.
-            </p>
-          </PageContainer>
-        </footer>
-      </div>
-    );
-  }
-
-  // ==========================================
-  // SCREEN 3: TOOLS + ESTIMATES + EVALUATION
-  // ==========================================
-  if (currentScreen === "results2" && analysis) {
-    return (
-      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column" }}>
-        <header style={headerStyle}>
-          <PageContainer wide>
-            <div style={{ padding: "16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h1 style={{ fontSize: 14, fontFamily: "monospace", letterSpacing: "0.1em", textTransform: "uppercase", color: "#525252", margin: 0 }}>
-                Idea Validator
-              </h1>
-              <button onClick={() => setCurrentScreen("results1")} style={{ fontSize: 12, color: "#525252", background: "none", border: "none", cursor: "pointer" }}>
-                ← Back to analysis
-              </button>
-            </div>
-          </PageContainer>
-        </header>
-
-        <StepProgress currentStep={getStepNumber()} />
-
-        <main style={{ flex: 1, paddingBottom: 64 }}>
-          <PageContainer wide>
-
-            {/* Tools */}
-            <section style={{ marginBottom: 48 }}>
-              <SectionHeader icon="🔧" title="Tool Recommendations" subtitle="Platforms and tools to help you build" />
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-                {analysis.tools.map((tool, i) => (
-                  <Card key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div>
-                      <h3 style={{ fontSize: 14, fontWeight: 700, color: "#f5f5f5", margin: 0 }}>{tool.name}</h3>
-                      <p style={{ fontSize: 12, color: "#737373", margin: "4px 0 0 0", fontWeight: 500 }}>{tool.category}</p>
-                    </div>
-                    <p style={{ fontSize: 14, color: "rgba(96,165,250,0.8)", lineHeight: 1.6, margin: 0 }}>
-                      {tool.description}
-                    </p>
-                  </Card>
-                ))}
-              </div>
-            </section>
-
-            {/* Time & Difficulty */}
-            <section style={{ marginBottom: 48 }}>
-              <SectionHeader icon="⏱" title="Time & Difficulty" subtitle="Calibrated to your experience level" />
-
-              <Card style={{ padding: 32 }}>
-                <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", marginBottom: 24 }}>
-                  <div style={{ textAlign: "center" }}>
-                    <p style={{ fontSize: 12, color: "#737373", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, margin: "0 0 8px 0" }}>
-                      Estimated Duration
-                    </p>
-                    <p style={{ fontSize: 24, fontWeight: 700, color: "#f5f5f5", margin: 0 }}>
-                      {analysis.estimates.duration}
-                    </p>
-                  </div>
-                  <div style={{ width: 1, height: 64, background: "#262626" }} />
-                  <div style={{ textAlign: "center" }}>
-                    <p style={{ fontSize: 12, color: "#737373", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, margin: "0 0 8px 0" }}>
-                      Difficulty Level
-                    </p>
-                    <span style={{
-                      display: "inline-block",
-                      fontSize: 14,
-                      fontWeight: 700,
-                      padding: "6px 16px",
-                      borderRadius: 9999,
-                      ...(analysis.estimates.difficulty === "Very Hard"
-                        ? { background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)" }
-                        : analysis.estimates.difficulty === "Hard"
-                        ? { background: "rgba(245,158,11,0.15)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.3)" }
-                        : analysis.estimates.difficulty === "Moderate"
-                        ? { background: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.3)" }
-                        : { background: "rgba(16,185,129,0.15)", color: "#34d399", border: "1px solid rgba(16,185,129,0.3)" }),
-                    }}>
-                      {analysis.estimates.difficulty}
-                    </span>
-                  </div>
-                </div>
-                <p style={{ fontSize: 14, color: "#a3a3a3", textAlign: "center", lineHeight: 1.6, maxWidth: 560, margin: "0 auto" }}>
-                  {analysis.estimates.explanation}
-                </p>
-              </Card>
-            </section>
-
-            {/* Final Evaluation */}
-            <section style={{ marginBottom: 48 }}>
-              <SectionHeader icon="📊" title="Final Evaluation" subtitle="Scored analysis of your AI product idea" />
-
-              {/* Overall score */}
-              <Card style={{ padding: 32, textAlign: "center", marginBottom: 16 }}>
-                <p style={{ fontSize: 12, color: "#737373", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, margin: "0 0 4px 0" }}>
-                  Overall Idea Potential
-                </p>
-                <p style={{ fontSize: 10, color: "#404040", margin: "0 0 12px 0" }}>
-                  Weighted average · Higher is better
-                </p>
-                <p style={{ fontSize: 64, fontWeight: 700, color: "#f5f5f5", margin: 0, lineHeight: 1 }}>
-                  {analysis.evaluation.overall_score.toFixed(1)}
-                  <span style={{ fontSize: 20, fontWeight: 400, color: "#525252" }}>/10</span>
-                </p>
-              </Card>
-
-              {/* Metrics */}
-              <Card style={{ padding: 32, marginBottom: 16 }}>
-                <ScoreBar
-                  name="Market Demand"
-                  score={analysis.evaluation.market_demand.score}
-                  explanation={analysis.evaluation.market_demand.explanation}
-                  weight="30%"
-                  notes={[
-                    analysis.evaluation.market_demand.geographic_note,
-                    analysis.evaluation.market_demand.trajectory_note,
-                  ].filter(Boolean)}
-                />
-                <ScoreBar
-                  name={analysis.evaluation.monetization.label || "Monetization Potential"}
-                  score={analysis.evaluation.monetization.score}
-                  explanation={analysis.evaluation.monetization.explanation}
-                  weight="25%"
-                />
-                <ScoreBar
-                  name="Originality"
-                  score={analysis.evaluation.originality.score}
-                  explanation={analysis.evaluation.originality.explanation}
-                  weight="25%"
-                />
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: "#e5e5e5" }}>
-                      Technical Complexity
-                      <span style={{ fontSize: 11, fontWeight: 400, color: "#525252", marginLeft: 8 }}>20% · inverted</span>
-                    </span>
-                    <span style={{
-                      fontSize: 14,
-                      fontFamily: "monospace",
-                      fontWeight: 600,
-                      color: analysis.evaluation.technical_complexity.score >= 8 ? "#ef4444"
-                        : analysis.evaluation.technical_complexity.score >= 6 ? "#f59e0b"
-                        : analysis.evaluation.technical_complexity.score >= 4 ? "#3b82f6"
-                        : "#10b981",
-                    }}>
-                      {analysis.evaluation.technical_complexity.score.toFixed(1)}/10
-                    </span>
-                  </div>
-                  <div style={{ width: "100%", height: 8, background: "#262626", borderRadius: 9999, overflow: "hidden" }}>
-                    <div style={{
-                      height: "100%",
-                      borderRadius: 9999,
-                      background: analysis.evaluation.technical_complexity.score >= 8 ? "#ef4444"
-                        : analysis.evaluation.technical_complexity.score >= 6 ? "#f59e0b"
-                        : analysis.evaluation.technical_complexity.score >= 4 ? "#3b82f6"
-                        : "#10b981",
-                      width: `${(analysis.evaluation.technical_complexity.score / 10) * 100}%`,
-                      transition: "width 1s ease-out",
-                    }} />
-                  </div>
-                  <p style={{ fontSize: 12, color: "#737373", marginTop: 8, lineHeight: 1.5 }}>
-                    {analysis.evaluation.technical_complexity.base_score_explanation}
-                    {" "}{analysis.evaluation.technical_complexity.adjustment_explanation}
-                    {" "}{analysis.evaluation.technical_complexity.explanation}
-                  </p>
-                  {analysis.evaluation.technical_complexity.incremental_note && (
-                    <p style={{ fontSize: 11, color: "#525252", marginTop: 4, lineHeight: 1.4, fontStyle: "italic" }}>
-                      {analysis.evaluation.technical_complexity.incremental_note}
-                    </p>
-                  )}
-                </div>
-              </Card>
-
-              {/* Marketplace Note */}
-              {analysis.evaluation.marketplace_note && (
-                <Card style={{ padding: 24, marginBottom: 16, background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.15)" }}>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: "#60a5fa", margin: "0 0 6px 0", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Marketplace Note
-                  </p>
-                  <p style={{ fontSize: 13, color: "#a3a3a3", lineHeight: 1.6, margin: 0 }}>
-                    {analysis.evaluation.marketplace_note}
-                  </p>
-                </Card>
-              )}
-
-              {/* Summary */}
-              <Card style={{ padding: 32 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, color: "#e5e5e5", margin: "0 0 12px 0" }}>Summary</h3>
-                <p style={{ fontSize: 14, color: "#a3a3a3", lineHeight: 1.7, margin: 0 }}>
-                  {analysis.evaluation.summary}
-                </p>
-              </Card>
-            </section>
-
-            <button
-              onClick={() => {
-                setCurrentScreen("input");
-                setAnalysis(null);
-                setIdea("");
-                setEditedPhases(null);
-                setExpandedPhases({});
-                setEvalsRemaining(getEvalsRemaining());
-              }}
-              style={{
-                width: "100%",
-                padding: "14px 0",
-                borderRadius: 12,
-                fontSize: 14,
-                fontWeight: 600,
-                border: "1px solid rgba(64,64,64,0.6)",
-                background: "transparent",
-                color: "#a3a3a3",
-                cursor: "pointer",
-              }}
-            >
-              Analyze Another Idea
-            </button>
-          </PageContainer>
-        </main>
-
-        <footer style={footerStyle}>
-          <PageContainer wide>
-            <p style={{ fontSize: 12, color: "#404040", margin: 0 }}>
-              IdeaValidator — All analysis is AI-generated. Use as a guide, not a definitive assessment.
-            </p>
-          </PageContainer>
-        </footer>
-      </div>
-    );
-  }
-
-  return null;
 }
