@@ -19,7 +19,7 @@ function StepProgress({ currentStep }) {
     { number: 1, label: "Profile" },
     { number: 2, label: "Idea" },
     { number: 3, label: "Analysis" },
-    { number: 4, label: "Evaluation" },
+    { number: 4, label: "Build Plan" },
   ];
 
   const circleSize = isMobile ? 28 : 40;
@@ -712,23 +712,25 @@ export default function Home() {
               </div>
             )}
 
-            {/* Classification Tag */}
-            <div style={{ marginBottom: 24, display: "flex", gap: 8 }}>
-              <span style={{
-                display: "inline-block",
-                fontSize: 11,
-                fontWeight: 600,
-                padding: "4px 10px",
-                borderRadius: 9999,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-                ...(analysis.classification === "social_impact"
-                  ? { background: "rgba(16,185,129,0.12)", color: "#34d399", border: "1px solid rgba(16,185,129,0.25)" }
-                  : { background: "rgba(59,130,246,0.12)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.25)" }),
-              }}>
-                {analysis.classification === "social_impact" ? "Social Impact" : "Commercial"}
-              </span>
-            </div>
+            {/* Classification */}
+            {analysis.classification && (
+              <div style={{ marginBottom: 24, display: "flex", gap: 8 }}>
+                <span style={{
+                  display: "inline-block",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "4px 10px",
+                  borderRadius: 9999,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  ...(analysis.classification === "social_impact"
+                    ? { background: "rgba(16,185,129,0.12)", color: "#34d399", border: "1px solid rgba(16,185,129,0.25)" }
+                    : { background: "rgba(59,130,246,0.12)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.25)" }),
+                }}>
+                  {analysis.classification === "social_impact" ? "Social Impact" : "Commercial"}
+                </span>
+              </div>
+            )}
 
             {/* Competition */}
             <section style={{ marginBottom: 48 }}>
@@ -838,7 +840,7 @@ export default function Home() {
 
             {/* Final Evaluation */}
             <section style={{ marginBottom: 48 }}>
-              <SectionHeader icon="📊" title="Final Evaluation" subtitle="Scored analysis of your AI product idea" />
+              <SectionHeader icon="📊" title="Evaluation" subtitle="Scored analysis of your AI product idea" />
 
               {/* Overall score */}
               <Card style={{ padding: 32, textAlign: "center", marginBottom: 16 }}>
@@ -957,7 +959,7 @@ export default function Home() {
                 cursor: "pointer",
               }}
             >
-              Continue to Execution Plan
+              Continue to Build Plan
             </button>
           </PageContainer>
         </main>
@@ -974,7 +976,7 @@ export default function Home() {
   }
 
   // ==========================================
-  // SCREEN 3: EXECUTION + TOOLS + ESTIMATES
+  // SCREEN 3: EXECUTION PLAN + TOOLS + ESTIMATES
   // ==========================================
   if (currentScreen === "results2" && analysis) {
     return (
@@ -986,7 +988,7 @@ export default function Home() {
                 Idea Validator
               </h1>
               <button onClick={() => setCurrentScreen("results1")} style={{ fontSize: 12, color: "#525252", background: "none", border: "none", cursor: "pointer" }}>
-                ← Back to evaluation
+                ← Back to analysis
               </button>
             </div>
           </PageContainer>
@@ -996,107 +998,6 @@ export default function Home() {
 
         <main style={{ flex: 1, paddingBottom: 64 }}>
           <PageContainer wide>
-
-            {/* Tools */}
-            <section style={{ marginBottom: 48 }}>
-              <SectionHeader icon="🔧" title="Tool Recommendations" subtitle="Platforms and tools to help you build" />
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-                {analysis.tools.map((tool, i) => (
-                  <Card key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div>
-                      <h3 style={{ fontSize: 14, fontWeight: 700, color: "#f5f5f5", margin: 0 }}>{tool.name}</h3>
-                      <p style={{ fontSize: 12, color: "#737373", margin: "4px 0 0 0", fontWeight: 500 }}>{tool.category}</p>
-                    </div>
-                    <p style={{ fontSize: 14, color: "rgba(96,165,250,0.8)", lineHeight: 1.6, margin: 0 }}>
-                      {tool.description}
-                    </p>
-                  </Card>
-                ))}
-              </div>
-            </section>
-
-            {/* Time & Difficulty */}
-            <section style={{ marginBottom: 48 }}>
-              <SectionHeader icon="⏱" title="Time & Difficulty" subtitle="Calibrated to your experience level" />
-
-              <Card style={{ padding: 32 }}>
-                <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", marginBottom: 24 }}>
-                  <div style={{ textAlign: "center" }}>
-                    <p style={{ fontSize: 12, color: "#737373", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, margin: "0 0 8px 0" }}>
-                      Estimated Duration
-                    </p>
-                    <p style={{ fontSize: 24, fontWeight: 700, color: "#f5f5f5", margin: 0 }}>
-                      {analysis.estimates.duration}
-                    </p>
-                  </div>
-                  <div style={{ width: 1, height: 64, background: "#262626" }} />
-                  <div style={{ textAlign: "center" }}>
-                    <p style={{ fontSize: 12, color: "#737373", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, margin: "0 0 8px 0" }}>
-                      Difficulty Level
-                    </p>
-                    <span style={{
-                      display: "inline-block",
-                      fontSize: 14,
-                      fontWeight: 700,
-                      padding: "6px 16px",
-                      borderRadius: 9999,
-                      ...(analysis.estimates.difficulty === "Very Hard"
-                        ? { background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)" }
-                        : analysis.estimates.difficulty === "Hard"
-                        ? { background: "rgba(245,158,11,0.15)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.3)" }
-                        : analysis.estimates.difficulty === "Moderate"
-                        ? { background: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.3)" }
-                        : { background: "rgba(16,185,129,0.15)", color: "#34d399", border: "1px solid rgba(16,185,129,0.3)" }),
-                    }}>
-                      {analysis.estimates.difficulty}
-                    </span>
-                  </div>
-                </div>
-                <p style={{ fontSize: 14, color: "#a3a3a3", textAlign: "center", lineHeight: 1.6, maxWidth: 560, margin: "0 auto" }}>
-                  {analysis.estimates.explanation}
-                </p>
-              </Card>
-            </section>
-
-            <button
-              onClick={() => {
-                setCurrentScreen("input");
-                setAnalysis(null);
-                setIdea("");
-                setEditedPhases(null);
-                setExpandedPhases({});
-                setEvalsRemaining(getEvalsRemaining());
-              }}
-              style={{
-                width: "100%",
-                padding: "14px 0",
-                borderRadius: 12,
-                fontSize: 14,
-                fontWeight: 600,
-                border: "1px solid rgba(64,64,64,0.6)",
-                background: "transparent",
-                color: "#a3a3a3",
-                cursor: "pointer",
-              }}
-            >
-              Analyze Another Idea
-            </button>
-          </PageContainer>
-        </main>
-
-        <footer style={footerStyle}>
-          <PageContainer wide>
-            <p style={{ fontSize: 12, color: "#404040", margin: 0 }}>
-              IdeaValidator — All analysis is AI-generated. Use as a guide, not a definitive assessment.
-            </p>
-          </PageContainer>
-        </footer>
-      </div>
-    );
-  }
-
-  return null;
             {/* Phases */}
             <section style={{ marginBottom: 48 }}>
               <SectionHeader icon="⚙" title="Execution Phases" subtitle="Recommended roadmap for building your idea" />
@@ -1226,4 +1127,106 @@ export default function Home() {
             </section>
 
 
+
+            {/* Tools */}
+            <section style={{ marginBottom: 48 }}>
+              <SectionHeader icon="🔧" title="Tool Recommendations" subtitle="Platforms and tools to help you build" />
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+                {analysis.tools.map((tool, i) => (
+                  <Card key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div>
+                      <h3 style={{ fontSize: 14, fontWeight: 700, color: "#f5f5f5", margin: 0 }}>{tool.name}</h3>
+                      <p style={{ fontSize: 12, color: "#737373", margin: "4px 0 0 0", fontWeight: 500 }}>{tool.category}</p>
+                    </div>
+                    <p style={{ fontSize: 14, color: "rgba(96,165,250,0.8)", lineHeight: 1.6, margin: 0 }}>
+                      {tool.description}
+                    </p>
+                  </Card>
+                ))}
+              </div>
+            </section>
+
+            {/* Time & Difficulty */}
+            <section style={{ marginBottom: 48 }}>
+              <SectionHeader icon="⏱" title="Time & Difficulty" subtitle="Calibrated to your experience level" />
+
+              <Card style={{ padding: 32 }}>
+                <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", marginBottom: 24 }}>
+                  <div style={{ textAlign: "center" }}>
+                    <p style={{ fontSize: 12, color: "#737373", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, margin: "0 0 8px 0" }}>
+                      Estimated Duration
+                    </p>
+                    <p style={{ fontSize: 24, fontWeight: 700, color: "#f5f5f5", margin: 0 }}>
+                      {analysis.estimates.duration}
+                    </p>
+                  </div>
+                  <div style={{ width: 1, height: 64, background: "#262626" }} />
+                  <div style={{ textAlign: "center" }}>
+                    <p style={{ fontSize: 12, color: "#737373", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, margin: "0 0 8px 0" }}>
+                      Difficulty Level
+                    </p>
+                    <span style={{
+                      display: "inline-block",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      padding: "6px 16px",
+                      borderRadius: 9999,
+                      ...(analysis.estimates.difficulty === "Very Hard"
+                        ? { background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)" }
+                        : analysis.estimates.difficulty === "Hard"
+                        ? { background: "rgba(245,158,11,0.15)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.3)" }
+                        : analysis.estimates.difficulty === "Moderate"
+                        ? { background: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.3)" }
+                        : { background: "rgba(16,185,129,0.15)", color: "#34d399", border: "1px solid rgba(16,185,129,0.3)" }),
+                    }}>
+                      {analysis.estimates.difficulty}
+                    </span>
+                  </div>
+                </div>
+                <p style={{ fontSize: 14, color: "#a3a3a3", textAlign: "center", lineHeight: 1.6, maxWidth: 560, margin: "0 auto" }}>
+                  {analysis.estimates.explanation}
+                </p>
+              </Card>
+            </section>
+
+
+            <button
+              onClick={() => {
+                setCurrentScreen("input");
+                setAnalysis(null);
+                setIdea("");
+                setEditedPhases(null);
+                setExpandedPhases({});
+                setEvalsRemaining(getEvalsRemaining());
+              }}
+              style={{
+                width: "100%",
+                padding: "14px 0",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                border: "1px solid rgba(64,64,64,0.6)",
+                background: "transparent",
+                color: "#a3a3a3",
+                cursor: "pointer",
+              }}
+            >
+              Analyze Another Idea
+            </button>
+          </PageContainer>
+        </main>
+
+        <footer style={footerStyle}>
+          <PageContainer wide>
+            <p style={{ fontSize: 12, color: "#404040", margin: 0 }}>
+              IdeaValidator — All analysis is AI-generated. Use as a guide, not a definitive assessment.
+            </p>
+          </PageContainer>
+        </footer>
+      </div>
+    );
+  }
+
+  return null;
 }
