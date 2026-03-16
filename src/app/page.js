@@ -203,6 +203,8 @@ function Card({ children, style = {} }) {
         border: "1px solid rgba(38,38,38,0.8)",
         borderRadius: 16,
         padding: 24,
+        boxSizing: "border-box",
+        overflow: "hidden",
         ...style,
       }}
     >
@@ -233,6 +235,7 @@ function PageContainer({ children, wide = false }) {
         marginRight: "auto",
         paddingLeft: isMobile ? 16 : 32,
         paddingRight: isMobile ? 16 : 32,
+        boxSizing: "border-box",
       }}
     >
       {children}
@@ -1055,7 +1058,7 @@ export default function Home() {
     const canContinue = profile.coding && profile.ai;
 
     return (
-      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column", overflowX: "hidden" }}>
         <header style={headerStyle}>
           <PageContainer>
             <div style={{ padding: "16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1114,13 +1117,14 @@ export default function Home() {
                 <label style={{ fontSize: 14, fontWeight: 600, color: "#d4d4d4", display: "block", marginBottom: 12 }}>
                   How familiar are you with coding?
                 </label>
-                <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   {["Beginner", "Intermediate", "Advanced"].map((opt) => (
                     <button
                       key={opt}
                       onClick={() => setProfile((p) => ({ ...p, coding: opt }))}
                       style={{
                         flex: 1,
+                        minWidth: 80,
                         padding: "10px 16px",
                         borderRadius: 12,
                         fontSize: 14,
@@ -1128,6 +1132,7 @@ export default function Home() {
                         border: "1px solid",
                         cursor: "pointer",
                         transition: "all 0.2s",
+                        boxSizing: "border-box",
                         ...(profile.coding === opt
                           ? { background: "#fff", color: "#0a0a0a", borderColor: "#fff" }
                           : { background: "rgba(23,23,23,0.8)", color: "#a3a3a3", borderColor: "rgba(64,64,64,0.6)" }),
@@ -1144,13 +1149,14 @@ export default function Home() {
                 <label style={{ fontSize: 14, fontWeight: 600, color: "#d4d4d4", display: "block", marginBottom: 12 }}>
                   How much experience do you have with AI tools?
                 </label>
-                <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   {["None", "Some", "Regular user"].map((opt) => (
                     <button
                       key={opt}
                       onClick={() => setProfile((p) => ({ ...p, ai: opt }))}
                       style={{
                         flex: 1,
+                        minWidth: 80,
                         padding: "10px 16px",
                         borderRadius: 12,
                         fontSize: 14,
@@ -1158,6 +1164,7 @@ export default function Home() {
                         border: "1px solid",
                         cursor: "pointer",
                         transition: "all 0.2s",
+                        boxSizing: "border-box",
                         ...(profile.ai === opt
                           ? { background: "#fff", color: "#0a0a0a", borderColor: "#fff" }
                           : { background: "rgba(23,23,23,0.8)", color: "#a3a3a3", borderColor: "rgba(64,64,64,0.6)" }),
@@ -1255,7 +1262,7 @@ export default function Home() {
   // ==========================================
   if (currentScreen === "input") {
     return (
-      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column", overflowX: "hidden" }}>
         <header style={headerStyle}>
           <PageContainer>
             <div style={{ padding: "16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1432,7 +1439,7 @@ export default function Home() {
     };
 
     return (
-      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column", overflowX: "hidden" }}>
         <header style={headerStyle}>
           <PageContainer>
             <div style={{ padding: "16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1736,7 +1743,7 @@ export default function Home() {
   // ==========================================
   if (currentScreen === "results1" && analysis) {
     return (
-      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column", overflowX: "hidden" }}>
         <header style={headerStyle}>
           <PageContainer wide>
             <div style={{ padding: "16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -2083,7 +2090,7 @@ export default function Home() {
   // ==========================================
   if (currentScreen === "results2" && analysis) {
     return (
-      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column", overflowX: "hidden" }}>
         <header style={headerStyle}>
           <PageContainer wide>
             <div style={{ padding: "16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
