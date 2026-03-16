@@ -1585,7 +1585,7 @@ export default function Home() {
                           }}>
                             {savedIdea.title}
                           </h3>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
                             <span style={{ fontSize: 12, color: "#525252" }}>{date}</span>
                             {eval_?.classification && (
                               <>
@@ -1608,7 +1608,7 @@ export default function Home() {
                             {eval_?.data_source === "verified" && (
                               <>
                                 <span style={{ fontSize: 12, color: "#333" }}>·</span>
-                                <span style={{ fontSize: 10, color: "#34d399", fontWeight: 500 }}>Verified</span>
+                                <span style={{ fontSize: 10, color: "#34d399", fontWeight: 500, flexShrink: 0 }}>Verified</span>
                               </>
                             )}
                           </div>
