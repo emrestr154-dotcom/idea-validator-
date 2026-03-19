@@ -1970,9 +1970,6 @@ export default function Home() {
               {/* Confidence Level */}
               {analysis.evaluation.confidence_level && (
                 <div style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
                   marginBottom: 16,
                   padding: "12px 16px",
                   borderRadius: 12,
@@ -1989,27 +1986,31 @@ export default function Home() {
                       : "rgba(245,158,11,0.2)"
                   }`,
                 }}>
-                  <span style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: "2px 8px",
-                    borderRadius: 6,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    flexShrink: 0,
-                    background: analysis.evaluation.confidence_level.level === "HIGH"
-                      ? "rgba(16,185,129,0.15)"
-                      : analysis.evaluation.confidence_level.level === "LOW"
-                      ? "rgba(239,68,68,0.15)"
-                      : "rgba(245,158,11,0.15)",
-                    color: analysis.evaluation.confidence_level.level === "HIGH"
-                      ? "#34d399"
-                      : analysis.evaluation.confidence_level.level === "LOW"
-                      ? "#f87171"
-                      : "#fbbf24",
-                  }}>
-                    {analysis.evaluation.confidence_level.level}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#737373", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      Evaluation Confidence
+                    </span>
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "2px 8px",
+                      borderRadius: 6,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      background: analysis.evaluation.confidence_level.level === "HIGH"
+                        ? "rgba(16,185,129,0.15)"
+                        : analysis.evaluation.confidence_level.level === "LOW"
+                        ? "rgba(239,68,68,0.15)"
+                        : "rgba(245,158,11,0.15)",
+                      color: analysis.evaluation.confidence_level.level === "HIGH"
+                        ? "#34d399"
+                        : analysis.evaluation.confidence_level.level === "LOW"
+                        ? "#f87171"
+                        : "#fbbf24",
+                    }}>
+                      {analysis.evaluation.confidence_level.level}
+                    </span>
+                  </div>
                   <span style={{ fontSize: 13, color: "#a3a3a3", lineHeight: 1.5 }}>
                     {analysis.evaluation.confidence_level.reason}
                   </span>
@@ -2191,7 +2192,7 @@ export default function Home() {
             {/* Failure Risks */}
             {analysis.evaluation.failure_risks && analysis.evaluation.failure_risks.length > 0 && (
               <section style={{ marginBottom: 48 }}>
-                <SectionHeader icon="⚠️" title="Key Risks" subtitle="Most likely reasons this idea could fail" />
+                <SectionHeader icon="⚠️" title="Key Risks" subtitle="Potential challenges to be aware of before building" />
                 <Card style={{
                   padding: 24,
                   background: "rgba(239,68,68,0.04)",
