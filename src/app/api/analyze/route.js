@@ -218,15 +218,44 @@ REAL competitor data from GitHub and Google has been provided above. You MUST:
 5. You MAY add 1-2 additional competitors from your knowledge if highly relevant, marked with "source": "llm".
 6. Your differentiation analysis must reference the REAL competitors specifically.
 7. Do NOT invent competitors when real ones are provided.
+
+=== COMPETITOR CLASSIFICATION ===
+Classify EVERY competitor with a competitor_type field:
+- "direct": Products solving the same problem for the same audience in roughly the same way.
+- "adjacent": Products in the same space but solving a different problem, or the same problem for a different audience. Could pivot to compete.
+- "substitute": Non-product alternatives that users currently use instead: manual workflows, spreadsheets, existing habits, WhatsApp/Discord groups, personal relationships, informal networks, hiring a person, or professional services (lawyers, consultants, accountants, brokers, agencies). These are often the REAL competition.
+- "internal_build": When the target buyer could build this internally with their existing engineering team, an LLM API, and a few weeks of work. Especially relevant for developer tools and enterprise AI features.
+
+IMPORTANT RULES:
+- For LLM-wrapper or AI-tool ideas: Always include at least one substitute entry for general-purpose LLMs (ChatGPT, Claude, Gemini) if a user could get 60%+ of the value through direct prompting. This is the most common missed competitor.
+- For B2B ideas: Always consider whether the buyer's internal team could build a "good enough" version. If yes, include an internal_build entry.
+- For ideas targeting markets that run on personal relationships (trade, sourcing, real estate, recruiting): Include the human intermediary (broker, agent, recruiter, sourcing contact) as a substitute competitor. Displacing trusted human relationships is often the hardest adoption barrier.
+- For regulated domains (health, finance, legal): Include the relevant professional service (doctor, lawyer, financial advisor, compliance officer) as a substitute competitor.
+- Include at least one substitute competitor for every evaluation. If you cannot identify any substitute, explain why in the summary.
+- WEAK RETRIEVAL DOES NOT MEAN OPEN MARKET. If few competitors are found in search results, this may mean the market is too niche, the keywords are wrong, or adoption barriers are so high that few have tried. Do NOT interpret sparse results as "blue ocean." Default to skepticism and note the uncertainty.
 `;
   } else {
     return `
 === COMPETITOR DATA INSTRUCTIONS ===
-No real competitor data was found from external searches. This could mean the idea is very niche or novel.
+No real competitor data was found from external searches. This could mean the idea is very niche or novel — but WEAK RETRIEVAL DOES NOT MEAN OPEN MARKET. Sparse results may indicate the market is too niche, keywords are wrong, or adoption barriers are so high that few have tried. Default to skepticism and note the uncertainty.
 1. Use your best knowledge to identify potential competitors.
 2. Mark all competitors with "source": "llm".
 3. Set "url" to null for competitors you cannot verify.
 4. Add a note in the competition summary that competitor data is AI-generated and should be verified.
+
+=== COMPETITOR CLASSIFICATION ===
+Classify EVERY competitor with a competitor_type field:
+- "direct": Products solving the same problem for the same audience in roughly the same way.
+- "adjacent": Products in the same space but solving a different problem, or the same problem for a different audience.
+- "substitute": Non-product alternatives users currently use instead: manual workflows, spreadsheets, existing habits, personal relationships, hiring a person, or professional services.
+- "internal_build": When the target buyer could build this internally with their existing engineering team and an LLM API.
+
+IMPORTANT RULES:
+- For LLM-wrapper or AI-tool ideas: Always include at least one substitute entry for general-purpose LLMs (ChatGPT, Claude, Gemini) if a user could get 60%+ of the value through direct prompting.
+- For B2B ideas: Consider whether the buyer's internal team could build a "good enough" version. If yes, include an internal_build entry.
+- For ideas targeting markets that run on personal relationships: Include the human intermediary as a substitute competitor.
+- For regulated domains (health, finance, legal): Include the relevant professional service as a substitute competitor.
+- Include at least one substitute competitor for every evaluation.
 `;
   }
 }
@@ -263,6 +292,22 @@ Set scope_warning to true if the idea includes significant non-software componen
 CHECK C — CLASSIFICATION:
 Determine if the idea is "commercial" (built to generate revenue and profit) or "social_impact" (built to help people/communities where the primary goal is impact, not profit). This affects how Monetization is evaluated.
 
+=== PRE-SCORING: DOMAIN RISK DETECTION ===
+Before scoring any metric, determine whether the idea operates in a HIGH-TRUST DOMAIN. An idea is in a high-trust domain if ANY of these are true:
+- The product's outputs influence health, medical, or clinical decisions (even if labeled "assistive," "supportive," or "copilot" — if a doctor, patient, or caregiver would act on the output, it is decision-influencing)
+- The product handles financial decisions, payments, investment advice, or compliance/AML/KYC
+- The product provides legal analysis, contract review, or regulatory guidance
+- The product makes safety-critical recommendations (transportation, infrastructure, security, child welfare)
+- The product's recommendations, if wrong, could cause meaningful harm to the user or a third party
+
+If the idea is in a high-trust domain:
+1. DEMAND: Trust and regulatory burden are demand FILTERS, not implementation footnotes. Score only the demand that survives the trust barrier. Do not accept "assistive/copilot/supportive" framing as evidence of lower trust requirements — if the output influences a consequential decision, users must trust it regardless of the label.
+2. MONETIZATION: Compliance costs, liability exposure, and trust-building investment reduce margins and delay revenue significantly. Clinical validation, legal review, security certification, and regulatory approval are real costs that must be reflected in the score.
+3. COMPETITION: Include relevant professional services (doctors, lawyers, financial advisors, compliance officers, brokers) as substitute competitors. The existing human expert is often the primary competition.
+4. FAILURE RISKS: At least one failure risk must address the trust/regulatory/liability dimension specifically.
+
+Do NOT gate this detection on whether the user explicitly mentions regulation. If the domain inherently involves consequential decisions, apply these rules regardless of how the user frames it.
+
 === EVALUATION RUBRIC ===
 
 Score exactly 4 metrics. Follow each rubric precisely.
@@ -280,7 +325,7 @@ Score based on the demand that SURVIVES friction, not the demand that exists bef
 
 Anti-inflation rules — apply before assigning any score above 6.0:
 - ENTERPRISE: If the buyer is an organization, account for procurement cycles, committee decisions, security review, and incumbent preference. "Large enterprise need" without clear buyer urgency and accessible entry point caps at 6.0.
-- CONSUMER: Score behavioral demand, not aspirational demand. "People would love this" is not demand. Demand means repeated, habitual usage. If the product requires significant onboarding (cataloging, uploading, profile-building), score based on post-onboarding retention, not pre-onboarding interest. If natural usage frequency is low (a few times per year), cap at 5.0-6.0. Trial interest is not demand — if the idea is naturally interesting on first use but weak as an enduring habit, score post-novelty usage, not initial curiosity.
+- CONSUMER: Score behavioral demand, not aspirational demand. "People would love this" is not demand. Demand means repeated, habitual usage. If the product requires significant onboarding (cataloging, uploading, profile-building), score based on post-onboarding retention, not pre-onboarding interest. If natural usage frequency is low (a few times per year), cap at 5.0-6.0. Trial interest is not demand — if the idea is naturally interesting on first use but weak as an enduring habit, score post-novelty usage, not initial curiosity. For social, community, or matching products, evaluate required concurrent user density — if the product needs many active users in the same geography or interest area to deliver value, the cold-start problem is a demand filter. Score demand that survives the density requirement, not total addressable interest.
 - REGULATED (health, finance, legal, safety): Trust and liability are demand filters, not footnotes. If users must trust the product with consequential decisions or sensitive data, the demand that survives that trust barrier is the score — not the size of the affected population. Disease prevalence is NOT market demand. Legal pain is NOT market demand. The demand is only what converts after trust is established.
 - RESEARCH/ACADEMIC: Research value and intellectual impressiveness are NOT commercial demand. If the primary audience is researchers or academics, score the commercial demand path, not the intellectual value. If there is no clear commercial path, cap at 4.0-5.0.
 - MARKETPLACE: Demand for the transaction does not equal demand for the platform. Score based on likelihood of achieving initial liquidity (minimum viable supply AND demand on the platform simultaneously). If the market currently operates on personal relationships or informal networks, displacing those intermediaries is the hardest adoption barrier — score accordingly.
@@ -423,28 +468,41 @@ Each risk should be one sentence, direct and concrete.
       {
         "name": "Competitor Name",
         "description": "What they do in 1-2 sentences",
+        "competitor_type": "direct | adjacent | substitute | internal_build",
         "status": "growing | active | acquired | failed | shutdown",
         "outcome": "Key metric or result",
         "source": "github | google | llm",
         "url": "https://... or null"
       }
     ],
-    "differentiation": "2-3 sentences on how user's idea differs from or overlaps with competitors listed above.",
-    "summary": "One paragraph overview of the competitive landscape",
+    "differentiation": "2-3 sentences on how user's idea differs from or overlaps with competitors listed above. Reference specific competitors by name. Address the strongest substitute competitor explicitly.",
+    "summary": "One paragraph overview of the competitive landscape. If retrieval was sparse, note this does not imply open market.",
     "data_source": "verified | llm_generated"
   },
   "phases": [
     {
       "number": 1,
       "title": "Phase Title",
+      "phase_type": "validate | build | launch",
       "summary": "Short 1-2 sentence summary",
       "details": "Extended explanation, 2-3 paragraphs with actionable guidance"
     }
   ],
+
+=== ROADMAP GUIDANCE ===
+Phase 1 should focus on validating the core assumption before building, unless the idea is simple enough that building a basic version IS the validation.
+
+SURVIVAL GATE RULE: For ideas with major adoption risks — marketplaces needing liquidity, products requiring trust in high-stakes domains, network-effect products needing user density, products displacing human relationships — Phase 1 MUST be a survival gate. Name the ONE thing that must be proven true before anything else matters. Examples: "Get 10 suppliers to commit to listing" for a marketplace, "Get 5 doctors to agree to pilot" for a clinical tool, "Prove users return after week 1" for a consumer habit product.
+
+Assign each phase a phase_type:
+- "validate": Testing assumptions, user interviews, demand proof, MVP experiments, survival gates
+- "build": Core product development, integrations, technical implementation
+- "launch": Go-to-market, first users, distribution, growth, scaling
+
   "tools": [
     {
       "name": "Tool Name",
-      "category": "Tool category",
+      "category": "Validate & Prototype | Core Tech Stack | Launch & Grow",
       "description": "Why this specific tool for THIS idea and THIS user skill level"
     }
   ],
@@ -491,9 +549,13 @@ Each risk should be one sentence, direct and concrete.
 }
 
 Additional rules:
-- Return 3-5 competitors. Use real companies/products when possible.
-- Generate 4-8 execution phases depending on idea complexity.
-- Recommend 4-6 tools contextualized to user skill level and specific idea.
+- Return 3-5 competitors. Use real companies/products when possible. At least one must be a substitute competitor (behavioral, professional service, or LLM substitution). Each competitor must have a competitor_type.
+- Generate 4-8 execution phases depending on idea complexity. Each phase must have a phase_type.
+- Recommend 4-6 tools grouped by purpose:
+  * "Validate & Prototype": Tools for testing assumptions, building MVPs, getting first user feedback. Landing page builders, no-code prototyping, survey tools, analytics.
+  * "Core Tech Stack": Core technical tools for building the actual product. Frameworks, databases, APIs, hosting, LLM providers.
+  * "Launch & Grow": Tools for reaching users, marketing, and scaling. Match to actual go-to-market path — Product Hunt and SEO for consumer products, LinkedIn outreach and CRM for B2B, community seeding for marketplaces. Every idea has a distribution path; recommend tools for it.
+  Include at least one tool in each category. If the idea is in a HIGH-TRUST DOMAIN (health, finance, legal, safety), also recommend constraint-critical tools (compliance frameworks, security certifications, audit logging, encryption) alongside build tools.
 - Calibrate time estimates and difficulty to user experience level.
 - Tool recommendations must explain WHY this tool for THIS idea.
 - For social impact ideas, set monetization label to "Sustainability Potential".`;

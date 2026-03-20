@@ -1877,31 +1877,40 @@ export default function Home() {
                 </div>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16, marginBottom: 16 }}>
-                {analysis.competition.competitors.map((comp, i) => {
-                  const sourceColors = {
-                    github: { bg: "rgba(110,84,148,0.15)", color: "#a78bfa", border: "rgba(110,84,148,0.3)", label: "GitHub" },
-                    google: { bg: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "rgba(59,130,246,0.3)", label: "Google" },
-                    llm: { bg: "rgba(115,115,115,0.15)", color: "#a3a3a3", border: "rgba(115,115,115,0.3)", label: "AI" },
-                  };
-                  const src = sourceColors[comp.source] || sourceColors.llm;
+              {(() => {
+                const sourceColors = {
+                  github: { bg: "rgba(110,84,148,0.15)", color: "#a78bfa", border: "rgba(110,84,148,0.3)", label: "GitHub" },
+                  google: { bg: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "rgba(59,130,246,0.3)", label: "Google" },
+                  llm: { bg: "rgba(115,115,115,0.15)", color: "#a3a3a3", border: "rgba(115,115,115,0.3)", label: "AI" },
+                };
+                const typeColors = {
+                  direct: { label: "Direct", color: "#f87171", bg: "rgba(239,68,68,0.10)", border: "rgba(239,68,68,0.25)" },
+                  adjacent: { label: "Adjacent", color: "#fbbf24", bg: "rgba(245,158,11,0.10)", border: "rgba(245,158,11,0.25)" },
+                  substitute: { label: "Substitute", color: "#60a5fa", bg: "rgba(59,130,246,0.10)", border: "rgba(59,130,246,0.25)" },
+                  internal_build: { label: "Internal Build", color: "#a78bfa", bg: "rgba(139,92,246,0.10)", border: "rgba(139,92,246,0.25)" },
+                };
 
+                const renderCompCard = (comp, i) => {
+                  const src = sourceColors[comp.source] || sourceColors.llm;
+                  const tc = typeColors[comp.competitor_type] || null;
                   return (
                     <Card key={i} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                         <h3 style={{ fontSize: 14, fontWeight: 700, color: "#f5f5f5", margin: 0, flex: 1, minWidth: 0 }}>{comp.name}</h3>
                         <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                          {tc && (
+                            <span style={{
+                              fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 9999,
+                              border: `1px solid ${tc.border}`, background: tc.bg, color: tc.color,
+                              letterSpacing: "0.03em", whiteSpace: "nowrap",
+                            }}>
+                              {tc.label}
+                            </span>
+                          )}
                           <span style={{
-                            fontSize: 10,
-                            fontWeight: 600,
-                            padding: "2px 8px",
-                            borderRadius: 9999,
-                            border: `1px solid ${src.border}`,
-                            background: src.bg,
-                            color: src.color,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            whiteSpace: "nowrap",
+                            fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 9999,
+                            border: `1px solid ${src.border}`, background: src.bg, color: src.color,
+                            textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap",
                           }}>
                             {src.label}
                           </span>
@@ -1915,27 +1924,62 @@ export default function Home() {
                         {comp.outcome}
                       </p>
                       {comp.url && (
-                        <a
-                          href={comp.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            fontSize: 12,
-                            color: "#60a5fa",
-                            textDecoration: "none",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                            marginTop: 2,
-                          }}
-                        >
+                        <a href={comp.url} target="_blank" rel="noopener noreferrer"
+                          style={{ fontSize: 12, color: "#60a5fa", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4, marginTop: 2 }}>
                           Visit →
                         </a>
                       )}
                     </Card>
                   );
-                })}
-              </div>
+                };
+
+                const hasCompetitorTypes = analysis.competition.competitors.some(c => c.competitor_type);
+
+                if (hasCompetitorTypes) {
+                  const directCompetitors = analysis.competition.competitors.filter(
+                    c => c.competitor_type === "direct" || c.competitor_type === "adjacent"
+                  );
+                  const alternatives = analysis.competition.competitors.filter(
+                    c => c.competitor_type === "substitute" || c.competitor_type === "internal_build"
+                  );
+
+                  return (
+                    <div style={{ marginBottom: 16 }}>
+                      {directCompetitors.length > 0 && (
+                        <>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, marginTop: 8 }}>
+                            <span style={{ fontSize: 15 }}>⚔️</span>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: "#d4d4d4", letterSpacing: "0.01em" }}>Direct Competitors</span>
+                            <span style={{ fontSize: 11, color: "#525252", fontWeight: 500, marginLeft: 2 }}>{directCompetitors.length}</span>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16, marginBottom: 24 }}>
+                            {directCompetitors.map((comp, i) => renderCompCard(comp, `direct-${i}`))}
+                          </div>
+                        </>
+                      )}
+                      {alternatives.length > 0 && (
+                        <>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, marginTop: 8 }}>
+                            <span style={{ fontSize: 15 }}>🔄</span>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: "#d4d4d4", letterSpacing: "0.01em" }}>Alternatives</span>
+                            <span style={{ fontSize: 11, color: "#525252", fontWeight: 500, marginLeft: 2 }}>{alternatives.length}</span>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16, marginBottom: 16 }}>
+                            {alternatives.map((comp, i) => renderCompCard(comp, `alt-${i}`))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                } else {
+                  // Fallback: flat list for old saved evaluations without competitor_type
+                  return (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16, marginBottom: 16 }}>
+                      {analysis.competition.competitors.map((comp, i) => renderCompCard(comp, i))}
+                    </div>
+                  );
+                }
+              })()}
 
               {analysis.competition.differentiation && (
                 <Card style={{ background: "rgba(23,23,23,0.4)", marginBottom: 16 }}>
@@ -2261,13 +2305,19 @@ export default function Home() {
                 </div>
               )}
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {currentPhases.map((phase, i) => {
+              {(() => {
+                const hasPhaseTypes = currentPhases.some(p => p.phase_type);
+                const canTrackProgress = viewingFromSaved && !!currentEvaluationId;
+
+                // Build phase cards with original index preserved
+                const phasesWithIndex = currentPhases.map((phase, i) => ({ phase, originalIndex: i }));
+
+                const renderPhaseCard = ({ phase, originalIndex }) => {
+                  const i = originalIndex;
                   const phaseKey = `phase_${i + 1}`;
                   const progress = phaseProgress[phaseKey];
                   const isCompleted = progress?.completed;
                   const isSaving = savingProgress[phaseKey];
-                  const canTrackProgress = viewingFromSaved && !!currentEvaluationId;
 
                   return (
                   <div
@@ -2544,8 +2594,43 @@ export default function Home() {
                     )}
                   </div>
                   );
-                })}
-              </div>
+                };
+
+                if (hasPhaseTypes) {
+                  const groups = [
+                    { type: "validate", icon: "🔍", title: "Validate & Prototype" },
+                    { type: "build", icon: "🛠", title: "Core Build" },
+                    { type: "launch", icon: "🚀", title: "Launch & Grow" },
+                  ];
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {groups.map(group => {
+                        const groupPhases = phasesWithIndex.filter(p => p.phase.phase_type === group.type);
+                        if (groupPhases.length === 0) return null;
+                        return (
+                          <div key={group.type}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, marginTop: 8 }}>
+                              <span style={{ fontSize: 15 }}>{group.icon}</span>
+                              <span style={{ fontSize: 14, fontWeight: 600, color: "#d4d4d4", letterSpacing: "0.01em" }}>{group.title}</span>
+                              <span style={{ fontSize: 11, color: "#525252", fontWeight: 500, marginLeft: 2 }}>{groupPhases.length} phases</span>
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+                              {groupPhases.map(p => renderPhaseCard(p))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                } else {
+                  // Fallback: flat list for old saved evaluations
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {phasesWithIndex.map(p => renderPhaseCard(p))}
+                    </div>
+                  );
+                }
+              })()}
             </section>
 
 
@@ -2554,19 +2639,64 @@ export default function Home() {
             <section style={{ marginBottom: 48 }}>
               <SectionHeader icon="🔧" title="Tool Recommendations" subtitle="Platforms and tools to help you build" />
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-                {analysis.tools.map((tool, i) => (
-                  <Card key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {(() => {
+                const toolCategories = ["Validate & Prototype", "Core Tech Stack", "Launch & Grow"];
+                const hasNewCategories = analysis.tools?.some(t => toolCategories.includes(t.category));
+
+                if (hasNewCategories) {
+                  const groupIcons = {
+                    "Validate & Prototype": "🔍",
+                    "Core Tech Stack": "🛠",
+                    "Launch & Grow": "🚀",
+                  };
+                  return (
                     <div>
-                      <h3 style={{ fontSize: 14, fontWeight: 700, color: "#f5f5f5", margin: 0 }}>{tool.name}</h3>
-                      <p style={{ fontSize: 12, color: "#737373", margin: "4px 0 0 0", fontWeight: 500 }}>{tool.category}</p>
+                      {toolCategories.map(category => {
+                        const groupTools = analysis.tools.filter(t => t.category === category);
+                        if (groupTools.length === 0) return null;
+                        return (
+                          <div key={category}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, marginTop: 8 }}>
+                              <span style={{ fontSize: 15 }}>{groupIcons[category]}</span>
+                              <span style={{ fontSize: 14, fontWeight: 600, color: "#d4d4d4", letterSpacing: "0.01em" }}>{category}</span>
+                              <span style={{ fontSize: 11, color: "#525252", fontWeight: 500, marginLeft: 2 }}>{groupTools.length} tools</span>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, marginBottom: 24 }}>
+                              {groupTools.map((tool, i) => (
+                                <Card key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                  <div>
+                                    <h3 style={{ fontSize: 14, fontWeight: 700, color: "#f5f5f5", margin: 0 }}>{tool.name}</h3>
+                                  </div>
+                                  <p style={{ fontSize: 14, color: "rgba(96,165,250,0.8)", lineHeight: 1.6, margin: 0 }}>
+                                    {tool.description}
+                                  </p>
+                                </Card>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <p style={{ fontSize: 14, color: "rgba(96,165,250,0.8)", lineHeight: 1.6, margin: 0 }}>
-                      {tool.description}
-                    </p>
-                  </Card>
-                ))}
-              </div>
+                  );
+                } else {
+                  // Fallback: flat list for old saved evaluations
+                  return (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+                      {analysis.tools.map((tool, i) => (
+                        <Card key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <div>
+                            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#f5f5f5", margin: 0 }}>{tool.name}</h3>
+                            <p style={{ fontSize: 12, color: "#737373", margin: "4px 0 0 0", fontWeight: 500 }}>{tool.category}</p>
+                          </div>
+                          <p style={{ fontSize: 14, color: "rgba(96,165,250,0.8)", lineHeight: 1.6, margin: 0 }}>
+                            {tool.description}
+                          </p>
+                        </Card>
+                      ))}
+                    </div>
+                  );
+                }
+              })()}
             </section>
 
             {/* Time & Difficulty */}
