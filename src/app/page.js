@@ -2114,10 +2114,16 @@ export default function Home() {
                         desc: "Clear demand, real differentiation, viable revenue path. This is what a genuinely good startup idea looks like. Most successful startups began in this range.",
                       },
                       {
-                        range: "5 – 7",
+                        range: "6 – 7",
                         color: "#3b82f6",
-                        title: "Real Potential, Real Challenges",
-                        desc: "Where most decent ideas land. Real pain exists, but there's friction — competitive pressure, unclear monetization, or weak differentiation. Many successful companies started here and executed their way up.",
+                        title: "Strong Opportunity",
+                        desc: "Clear demand, viable revenue path, and real challenges to solve. A score here means the idea is worth serious validation. Many successful companies started in this range.",
+                      },
+                      {
+                        range: "5 – 6",
+                        color: "#3b82f6",
+                        title: "Viable but Competitive",
+                        desc: "Where most decent ideas land. Real pain exists, but there's friction — competitive pressure, unclear monetization, or weak differentiation. Not a rejection — it means solve these challenges and you have something.",
                       },
                       {
                         range: "3 – 5",
