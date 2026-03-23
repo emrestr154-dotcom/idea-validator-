@@ -33,7 +33,7 @@ export async function GET(request) {
     }
 
     // ------------------------------------------------
-    // 2. Fetch ideas with their latest evaluation scores
+    // 2. Fetch ideas with their evaluation scores
     // ------------------------------------------------
     const { data: ideas, error: fetchError } = await supabaseAdmin
       .from("ideas")
@@ -87,7 +87,6 @@ export async function GET(request) {
         .in("evaluation_id", evaluationIds);
 
       if (!progressError && progressRows) {
-        // Build a map: evaluation_id -> { completed: N, total: N, completed_phases: ["phase_1", "phase_3"] }
         progressRows.forEach((row) => {
           if (!progressMap[row.evaluation_id]) {
             progressMap[row.evaluation_id] = { completed: 0, total: 0, completed_phases: [] };
@@ -102,15 +101,21 @@ export async function GET(request) {
     }
 
     // ------------------------------------------------
-    // 4. Attach progress + total phases to each idea
+    // 4. Attach progress + total phases + eval count to each idea
     // ------------------------------------------------
     const ideasWithProgress = (ideas || []).map((idea) => {
-      const eval_ = idea.evaluations?.[0];
+      // Sort evaluations by created_at descending (latest first)
+      const sortedEvals = (idea.evaluations || []).sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      );
+      const eval_ = sortedEvals[0];
       const totalPhases = eval_?.roadmap_json?.length || 0;
       const evalProgress = eval_ ? progressMap[eval_.id] : null;
 
       return {
         ...idea,
+        evaluations: sortedEvals,
+        evaluation_count: sortedEvals.length,
         progress: {
           completed: evalProgress?.completed || 0,
           total_phases: totalPhases,

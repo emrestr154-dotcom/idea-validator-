@@ -540,6 +540,10 @@ export default function Home() {
   const [isReEvalResult, setIsReEvalResult] = useState(false); // true when showing re-eval results (not yet saved)
   const [reEvalRevisionNotes, setReEvalRevisionNotes] = useState(null); // stored for saving later
 
+  // Alternatives popup state
+  const [showAlternativesPopup, setShowAlternativesPopup] = useState(false);
+  const [alternativesData, setAlternativesData] = useState(null); // { ideaId, title, evaluations: [...] }
+
   // Listen for auth state changes (login, logout, session restore)
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -1020,15 +1024,19 @@ export default function Home() {
   };
 
   // Load a saved idea's full evaluation and show it
-  const loadSavedIdea = async (ideaId) => {
+  const loadSavedIdea = async (ideaId, evaluationId) => {
     if (!user) return;
     setMyIdeasLoading(true);
     setMyIdeasError("");
+    setShowAlternativesPopup(false);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const res = await fetch(`/api/ideas/${ideaId}`, {
+      const url = evaluationId
+        ? `/api/ideas/${ideaId}?evaluation_id=${evaluationId}`
+        : `/api/ideas/${ideaId}`;
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       const data = await res.json();
@@ -1638,6 +1646,113 @@ export default function Home() {
         </header>
 
         <main style={{ flex: 1, paddingBottom: 48, paddingTop: 32 }}>
+          {/* Alternatives popup */}
+          {showAlternativesPopup && alternativesData && (
+            <div
+              onClick={() => setShowAlternativesPopup(false)}
+              style={{
+                position: "fixed",
+                top: 0, left: 0, right: 0, bottom: 0,
+                background: "rgba(0,0,0,0.6)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+                padding: 24,
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: "#1a1a1a",
+                  border: "1px solid rgba(64,64,64,0.6)",
+                  borderRadius: 16,
+                  padding: "24px",
+                  maxWidth: 420,
+                  width: "100%",
+                  maxHeight: "80vh",
+                  overflowY: "auto",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 600, color: "#f5f5f5", margin: 0 }}>
+                      {alternativesData.title}
+                    </h3>
+                    <p style={{ fontSize: 12, color: "#737373", margin: "4px 0 0 0" }}>
+                      {alternativesData.evaluations.length} version{alternativesData.evaluations.length > 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowAlternativesPopup(false)}
+                    style={{ background: "none", border: "none", color: "#525252", fontSize: 18, cursor: "pointer", padding: 4 }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {alternativesData.evaluations.map((ev, index) => {
+                    const evScore = ev.weighted_overall_score || 0;
+                    const evDate = new Date(ev.created_at).toLocaleDateString("en-US", {
+                      month: "short", day: "numeric", year: "numeric",
+                    });
+                    const isOriginal = index === alternativesData.evaluations.length - 1;
+                    const altLabel = isOriginal ? "Original" : `Alternative ${alternativesData.evaluations.length - 1 - index}`;
+
+                    return (
+                      <button
+                        key={ev.id}
+                        onClick={() => loadSavedIdea(alternativesData.ideaId, ev.id)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 14,
+                          padding: "14px 16px",
+                          background: isOriginal ? "rgba(255,255,255,0.03)" : "rgba(108,99,255,0.04)",
+                          border: `1px solid ${isOriginal ? "rgba(64,64,64,0.4)" : "rgba(108,99,255,0.15)"}`,
+                          borderRadius: 12,
+                          cursor: "pointer",
+                          textAlign: "left",
+                          width: "100%",
+                          transition: "border-color 0.2s",
+                        }}
+                      >
+                        {/* Score circle */}
+                        <div style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: "50%",
+                          background: `rgba(${evScore >= 7 ? "16,185,129" : evScore >= 5 ? "59,130,246" : evScore >= 3 ? "245,158,11" : "239,68,68"},0.15)`,
+                          border: `2px solid ${getScoreColor(evScore)}`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: getScoreColor(evScore),
+                        }}>
+                          {evScore.toFixed(1)}
+                        </div>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: isOriginal ? "#a3a3a3" : "#a78bfa" }}>
+                            {altLabel}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#525252", marginTop: 2 }}>
+                            {evDate}
+                          </div>
+                        </div>
+
+                        <span style={{ fontSize: 14, color: "#404040" }}>→</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
           <PageContainer>
             <div style={{ marginBottom: 32 }}>
               <h2 style={{ fontSize: 24, fontWeight: 600, margin: "0 0 8px 0" }}>My Ideas</h2>
@@ -1725,7 +1840,20 @@ export default function Home() {
                       }}
                     >
                       <div
-                        onClick={() => loadSavedIdea(savedIdea.id)}
+                        onClick={() => {
+                          const evalCount = savedIdea.evaluation_count || savedIdea.evaluations?.length || 1;
+                          if (evalCount > 1) {
+                            // Show alternatives popup
+                            setAlternativesData({
+                              ideaId: savedIdea.id,
+                              title: savedIdea.title,
+                              evaluations: savedIdea.evaluations || [],
+                            });
+                            setShowAlternativesPopup(true);
+                          } else {
+                            loadSavedIdea(savedIdea.id);
+                          }
+                        }}
                         style={{
                           display: "flex",
                           alignItems: "center",
@@ -1793,6 +1921,22 @@ export default function Home() {
                               <>
                                 <span style={{ fontSize: 12, color: "#333" }}>·</span>
                                 <span style={{ fontSize: 10, color: "#34d399", fontWeight: 500, flexShrink: 0 }}>Verified</span>
+                              </>
+                            )}
+                            {(savedIdea.evaluation_count || savedIdea.evaluations?.length || 1) > 1 && (
+                              <>
+                                <span style={{ fontSize: 12, color: "#333" }}>·</span>
+                                <span style={{
+                                  fontSize: 10,
+                                  fontWeight: 500,
+                                  padding: "2px 8px",
+                                  borderRadius: 9999,
+                                  background: "rgba(108,99,255,0.12)",
+                                  color: "#a78bfa",
+                                  border: "1px solid rgba(108,99,255,0.25)",
+                                }}>
+                                  {(savedIdea.evaluation_count || savedIdea.evaluations?.length) - 1} alt{(savedIdea.evaluation_count || savedIdea.evaluations?.length) - 1 > 1 ? "s" : ""}
+                                </span>
                               </>
                             )}
                           </div>
