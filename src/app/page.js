@@ -537,6 +537,8 @@ export default function Home() {
   const [reEvalChange2Text, setReEvalChange2Text] = useState("");
   const [reEvalOriginalIdea, setReEvalOriginalIdea] = useState(""); // original idea text for display
   const [isReEvaluating, setIsReEvaluating] = useState(false);
+  const [isReEvalResult, setIsReEvalResult] = useState(false); // true when showing re-eval results (not yet saved)
+  const [reEvalRevisionNotes, setReEvalRevisionNotes] = useState(null); // stored for saving later
 
   // Listen for auth state changes (login, logout, session restore)
   useEffect(() => {
@@ -707,6 +709,8 @@ export default function Home() {
     setCurrentIdeaId(null);
     setPhaseProgress({});
     setViewingFromSaved(false);
+    setIsReEvalResult(false);
+    setReEvalRevisionNotes(null);
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -839,36 +843,23 @@ export default function Home() {
         } catch (err) {
           console.error("Failed to record eval usage:", err);
         }
-
-        // Save as new evaluation on existing idea
-        try {
-          const reEvalRes = await fetch(`/api/ideas/${currentIdeaId}/re-evaluate`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              analysis: analyzeData,
-              revision_notes: revisions.length > 0 ? revisions : null,
-            }),
-          });
-          const reEvalData = await reEvalRes.json();
-          if (reEvalRes.ok) {
-            setCurrentEvaluationId(reEvalData.evaluation_id);
-          }
-        } catch (err) {
-          console.error("Failed to save re-evaluation:", err);
-          // Don't block — still show the results even if save fails
-        }
       }
 
-      // Show results
+      // Store revision notes for when user saves later
+      setReEvalRevisionNotes(revisions.length > 0 ? revisions : null);
+
+      // Show results as FRESH evaluation (not saved, not viewing from saved)
       setAnalysis(analyzeData);
       setEditedPhases(null);
       setExpandedPhases({});
       setPhaseProgress({});
-      setSaveStatus("saved"); // already saved via re-evaluate endpoint
+      setViewingFromSaved(false);
+      setSaveStatus("idle");
+      setSaveError("");
+      setSavedIdeaId(null);
+      setIdeaName("");
+      setCurrentEvaluationId(null);
+      setIsReEvalResult(true); // flag so save knows to use re-evaluate endpoint
       setReEvalMode(false);
       setReEvalChange1Type("");
       setReEvalChange1Text("");
@@ -914,9 +905,14 @@ export default function Home() {
     // First click: show the naming input
     if (saveStatus !== "naming") {
       setSaveStatus("naming");
-      // Pre-fill with a sensible default from the idea text
-      const firstLine = idea.split(/[.!?\n]/)[0].trim();
-      setIdeaName(firstLine.length <= 60 ? firstLine : firstLine.substring(0, 57) + "...");
+      if (isReEvalResult) {
+        // Pre-fill with "Alternative N" for re-evaluations
+        setIdeaName("Alternative");
+      } else {
+        // Pre-fill with a sensible default from the idea text
+        const firstLine = idea.split(/[.!?\n]/)[0].trim();
+        setIdeaName(firstLine.length <= 60 ? firstLine : firstLine.substring(0, 57) + "...");
+      }
       return;
     }
 
@@ -935,36 +931,65 @@ export default function Home() {
         return;
       }
 
-      const res = await fetch("/api/ideas/save", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          idea_text: idea,
-          idea_name: ideaName.trim(),
-          profile,
-          analysis,
-        }),
-      });
+      if (isReEvalResult && currentIdeaId) {
+        // Re-evaluation: save new evaluation on existing idea
+        const res = await fetch(`/api/ideas/${currentIdeaId}/re-evaluate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            analysis,
+            revision_notes: reEvalRevisionNotes,
+            alternative_name: ideaName.trim(),
+          }),
+        });
 
-      const data = await res.json();
+        const data = await res.json();
 
-      if (!res.ok) {
-        setSaveStatus("error");
-        setSaveError(data.error || "Failed to save. Please try again.");
-        if (data.limit_reached) {
-          setSavedIdeasCount(data.saved_count);
+        if (!res.ok) {
+          setSaveStatus("error");
+          setSaveError(data.error || "Failed to save. Please try again.");
+          return;
         }
-        return;
-      }
 
-      setSaveStatus("saved");
-      setSavedIdeaId(data.idea_id);
-      setCurrentIdeaId(data.idea_id);
-      setCurrentEvaluationId(data.evaluation_id);
-      setSavedIdeasCount(data.saved_count);
+        setSaveStatus("saved");
+        setCurrentEvaluationId(data.evaluation_id);
+        setIsReEvalResult(false);
+      } else {
+        // Normal save: create new idea + evaluation
+        const res = await fetch("/api/ideas/save", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            idea_text: idea,
+            idea_name: ideaName.trim(),
+            profile,
+            analysis,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setSaveStatus("error");
+          setSaveError(data.error || "Failed to save. Please try again.");
+          if (data.limit_reached) {
+            setSavedIdeasCount(data.saved_count);
+          }
+          return;
+        }
+
+        setSaveStatus("saved");
+        setSavedIdeaId(data.idea_id);
+        setCurrentIdeaId(data.idea_id);
+        setCurrentEvaluationId(data.evaluation_id);
+        setSavedIdeasCount(data.saved_count);
+      }
     } catch (err) {
       setSaveStatus("error");
       setSaveError("Something went wrong. Please try again.");
@@ -3385,14 +3410,14 @@ export default function Home() {
                       border: "1px solid rgba(59,130,246,0.3)",
                     }}>
                       <label style={{ fontSize: 13, fontWeight: 500, color: "#a3a3a3", display: "block", marginBottom: 8 }}>
-                        Name this idea
+                        {isReEvalResult ? "Name this alternative" : "Name this idea"}
                       </label>
                       <input
                         type="text"
                         value={ideaName}
                         onChange={(e) => setIdeaName(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && ideaName.trim() && handleSaveIdea()}
-                        placeholder="e.g., AI Nutrition Coach, Learning OS..."
+                        placeholder={isReEvalResult ? "e.g., Alternative - different buyer, B2B pivot..." : "e.g., AI Nutrition Coach, Learning OS..."}
                         autoFocus
                         maxLength={80}
                         style={{
@@ -3461,7 +3486,7 @@ export default function Home() {
                           transition: "all 0.2s",
                         }}
                       >
-                        {saveStatus === "saving" ? "Saving..." : `Save to My Ideas (${savedIdeasCount}/${SAVED_IDEA_LIMIT})`}
+                        {saveStatus === "saving" ? "Saving..." : isReEvalResult ? "Save as Alternative" : `Save to My Ideas (${savedIdeasCount}/${SAVED_IDEA_LIMIT})`}
                       </button>
                       {saveStatus === "error" && saveError && (
                         <p style={{ fontSize: 12, color: "#f87171", textAlign: "center", marginTop: 8 }}>
