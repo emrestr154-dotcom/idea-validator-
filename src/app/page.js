@@ -528,6 +528,15 @@ export default function Home() {
   const [noteText, setNoteText] = useState(""); // temp text for note editing
   const [dbNextResetTime, setDbNextResetTime] = useState(null); // DB-based reset time for logged-in users
 
+  // Re-evaluation state
+  const [reEvalMode, setReEvalMode] = useState(false); // true when on re-eval screen
+  const [reEvalChange1Type, setReEvalChange1Type] = useState(""); // "target_user" | "problem" | "core_idea"
+  const [reEvalChange1Text, setReEvalChange1Text] = useState("");
+  const [reEvalChange2Type, setReEvalChange2Type] = useState(""); // same options
+  const [reEvalChange2Text, setReEvalChange2Text] = useState("");
+  const [reEvalOriginalIdea, setReEvalOriginalIdea] = useState(""); // original idea text for display
+  const [isReEvaluating, setIsReEvaluating] = useState(false);
+
   // Listen for auth state changes (login, logout, session restore)
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -650,7 +659,7 @@ export default function Home() {
   const currentPhases = editedPhases || (analysis ? analysis.phases : []);
 
   const getStepNumber = () => {
-    const map = { profile: 1, input: 2, myideas: 2, results1: 3, results2: 4 };
+    const map = { profile: 1, input: 2, myideas: 2, reeval: 2, results1: 3, results2: 4 };
     return map[currentScreen] || 1;
   };
 
@@ -744,6 +753,144 @@ export default function Home() {
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  // Re-evaluate a saved idea with optional changes
+  const handleReEvaluate = async () => {
+    if (!currentIdeaId || !user) return;
+
+    // Check eval limits (same as handleAnalyze)
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const res = await fetch("/api/eval-usage", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const data = await res.json();
+        if (res.ok && data.remaining <= 0) {
+          const resetTime = data.next_reset_time
+            ? formatResetTime(data.next_reset_time)
+            : "soon";
+          setError(`You've used all ${EVAL_LIMIT} free evaluations this week. Next slot opens in ${resetTime}.`);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("DB eval check failed:", err);
+    }
+
+    setIsReEvaluating(true);
+    setError("");
+
+    try {
+      // Build the modified idea text
+      let modifiedIdea = reEvalOriginalIdea;
+      const revisions = [];
+
+      const changeLabel = (type) => {
+        if (type === "target_user") return "Target user";
+        if (type === "problem") return "Problem it solves";
+        if (type === "core_idea") return "Core idea";
+        return "";
+      };
+
+      if (reEvalChange1Type && reEvalChange1Text.trim()) {
+        revisions.push({ type: reEvalChange1Type, text: reEvalChange1Text.trim() });
+        modifiedIdea += `\n\n[REVISION — ${changeLabel(reEvalChange1Type)} changed to: ${reEvalChange1Text.trim()}]`;
+      }
+
+      if (reEvalChange2Type && reEvalChange2Text.trim()) {
+        // Don't allow same type in both boxes
+        if (reEvalChange2Type !== reEvalChange1Type) {
+          revisions.push({ type: reEvalChange2Type, text: reEvalChange2Text.trim() });
+          modifiedIdea += `\n\n[REVISION — ${changeLabel(reEvalChange2Type)} changed to: ${reEvalChange2Text.trim()}]`;
+        }
+      }
+
+      // Call the analyze endpoint (same as fresh evaluation)
+      const analyzeRes = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea: modifiedIdea, profile }),
+      });
+      const analyzeData = await analyzeRes.json();
+      if (!analyzeRes.ok) throw new Error(analyzeData.error || "Analysis failed");
+      if (analyzeData.ethics_blocked) {
+        setError(analyzeData.ethics_message);
+        return;
+      }
+
+      // Record eval usage
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        try {
+          const usageRes = await fetch("/api/eval-usage", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+          const usageData = await usageRes.json();
+          if (usageRes.ok) {
+            setEvalsRemaining(usageData.remaining);
+          }
+        } catch (err) {
+          console.error("Failed to record eval usage:", err);
+        }
+
+        // Save as new evaluation on existing idea
+        try {
+          const reEvalRes = await fetch(`/api/ideas/${currentIdeaId}/re-evaluate`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              analysis: analyzeData,
+              revision_notes: revisions.length > 0 ? revisions : null,
+            }),
+          });
+          const reEvalData = await reEvalRes.json();
+          if (reEvalRes.ok) {
+            setCurrentEvaluationId(reEvalData.evaluation_id);
+          }
+        } catch (err) {
+          console.error("Failed to save re-evaluation:", err);
+          // Don't block — still show the results even if save fails
+        }
+      }
+
+      // Show results
+      setAnalysis(analyzeData);
+      setEditedPhases(null);
+      setExpandedPhases({});
+      setPhaseProgress({});
+      setSaveStatus("saved"); // already saved via re-evaluate endpoint
+      setReEvalMode(false);
+      setReEvalChange1Type("");
+      setReEvalChange1Text("");
+      setReEvalChange2Type("");
+      setReEvalChange2Text("");
+      setCurrentScreen("results1");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsReEvaluating(false);
+    }
+  };
+
+  // Start re-evaluation flow from saved idea view
+  const startReEvaluation = () => {
+    setReEvalOriginalIdea(idea);
+    setReEvalChange1Type("");
+    setReEvalChange1Text("");
+    setReEvalChange2Type("");
+    setReEvalChange2Text("");
+    setError("");
+    setReEvalMode(true);
+    setCurrentScreen("reeval");
   };
 
   // Helper: format a reset time ISO string to human-readable
@@ -1722,6 +1869,290 @@ export default function Home() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </PageContainer>
+        </main>
+
+        <footer style={footerStyle}>
+          <PageContainer>
+            <p style={{ fontSize: 12, color: "#404040", margin: 0 }}>
+              IdeaValidator — All analysis is AI-generated. Use as a guide, not a definitive assessment.
+            </p>
+          </PageContainer>
+        </footer>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // RE-EVALUATION SCREEN
+  // ==========================================
+  if (currentScreen === "reeval" && reEvalMode) {
+    const dropdownOptions = [
+      { value: "", label: "Select what to change..." },
+      { value: "target_user", label: "Target user" },
+      { value: "problem", label: "Problem it solves" },
+      { value: "core_idea", label: "Core idea" },
+    ];
+
+    // Filter out already-selected option from the other dropdown
+    const getOptionsFor = (otherSelectedType) => {
+      return dropdownOptions.filter(
+        (opt) => opt.value === "" || opt.value !== otherSelectedType
+      );
+    };
+
+    const hasAnyChange = (reEvalChange1Type && reEvalChange1Text.trim()) ||
+      (reEvalChange2Type && reEvalChange2Text.trim());
+
+    return (
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column", overflowX: "hidden" }}>
+        <header style={headerStyle}>
+          <PageContainer>
+            <div style={{ padding: "16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h1 onClick={() => setCurrentScreen(profile.coding && profile.ai ? "input" : "profile")} style={{ fontSize: 14, fontFamily: "monospace", letterSpacing: "0.1em", textTransform: "uppercase", color: "#525252", margin: 0, cursor: "pointer" }}>
+                Idea Validator
+              </h1>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <button onClick={() => {
+                  setReEvalMode(false);
+                  setCurrentScreen("results2");
+                }} style={{ fontSize: 12, color: "#525252", background: "none", border: "none", cursor: "pointer" }}>
+                  ← Back to evaluation
+                </button>
+                {!authLoading && user && (
+                  <>
+                    <span style={{ color: "#262626" }}>|</span>
+                    <span style={{ fontSize: 12, color: "#525252" }}>{user.email}</span>
+                    <button onClick={handleLogout} style={{ fontSize: 12, color: "#525252", background: "none", border: "none", cursor: "pointer" }}>
+                      Log out
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </PageContainer>
+        </header>
+
+        <StepProgress currentStep={getStepNumber()} savedMode={true} />
+
+        <main style={{ flex: 1, paddingBottom: 48 }}>
+          <PageContainer>
+            <div style={{ marginBottom: 32 }}>
+              <h2 style={{ fontSize: 30, fontWeight: 600, margin: "0 0 12px 0" }}>
+                Re-evaluate with changes
+              </h2>
+              <p style={{ fontSize: 16, color: "#737373", lineHeight: 1.6, margin: 0 }}>
+                Run a fresh evaluation with updated market data. Optionally change one or two variables to test a different angle.
+              </p>
+            </div>
+
+            {/* Original idea — read-only */}
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "#737373", marginBottom: 8 }}>
+                Original idea
+              </label>
+              <Card style={{ padding: "16px 20px" }}>
+                <p style={{ fontSize: 14, color: "#a3a3a3", lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>
+                  {reEvalOriginalIdea}
+                </p>
+              </Card>
+            </div>
+
+            {/* Change box 1 */}
+            <div style={{
+              background: "rgba(255,255,255,0.02)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 12,
+              padding: 20,
+              marginBottom: 12,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(108,99,255,0.15)", color: "#6c63ff", fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center" }}>1</div>
+                <select
+                  value={reEvalChange1Type}
+                  onChange={(e) => {
+                    setReEvalChange1Type(e.target.value);
+                    if (!e.target.value) setReEvalChange1Text("");
+                  }}
+                  style={{
+                    flex: 1,
+                    background: "rgba(23,23,23,0.8)",
+                    border: "1px solid rgba(64,64,64,0.6)",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    fontSize: 14,
+                    color: reEvalChange1Type ? "#f5f5f5" : "#525252",
+                    outline: "none",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {getOptionsFor(reEvalChange2Type).map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.25)" }}>optional</span>
+              </div>
+              {reEvalChange1Type && (
+                <textarea
+                  value={reEvalChange1Text}
+                  onChange={(e) => setReEvalChange1Text(e.target.value)}
+                  placeholder={
+                    reEvalChange1Type === "target_user"
+                      ? "e.g. Small e-commerce store owners with 10-50 products"
+                      : reEvalChange1Type === "problem"
+                      ? "e.g. They spend 3 hours/week on compliance reports that could be automated"
+                      : "e.g. Instead of a full platform, a lightweight browser extension that..."
+                  }
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    background: "rgba(23,23,23,0.6)",
+                    border: "1px solid rgba(64,64,64,0.4)",
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    fontSize: 14,
+                    color: "#f5f5f5",
+                    lineHeight: 1.6,
+                    resize: "none",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    fontFamily: "inherit",
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Change box 2 */}
+            <div style={{
+              background: "rgba(255,255,255,0.02)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 12,
+              padding: 20,
+              marginBottom: 24,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(108,99,255,0.15)", color: "#6c63ff", fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center" }}>2</div>
+                <select
+                  value={reEvalChange2Type}
+                  onChange={(e) => {
+                    setReEvalChange2Type(e.target.value);
+                    if (!e.target.value) setReEvalChange2Text("");
+                  }}
+                  style={{
+                    flex: 1,
+                    background: "rgba(23,23,23,0.8)",
+                    border: "1px solid rgba(64,64,64,0.6)",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    fontSize: 14,
+                    color: reEvalChange2Type ? "#f5f5f5" : "#525252",
+                    outline: "none",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {getOptionsFor(reEvalChange1Type).map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.25)" }}>optional</span>
+              </div>
+              {reEvalChange2Type && (
+                <textarea
+                  value={reEvalChange2Text}
+                  onChange={(e) => setReEvalChange2Text(e.target.value)}
+                  placeholder={
+                    reEvalChange2Type === "target_user"
+                      ? "e.g. Small e-commerce store owners with 10-50 products"
+                      : reEvalChange2Type === "problem"
+                      ? "e.g. They spend 3 hours/week on compliance reports that could be automated"
+                      : "e.g. Instead of a full platform, a lightweight browser extension that..."
+                  }
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    background: "rgba(23,23,23,0.6)",
+                    border: "1px solid rgba(64,64,64,0.4)",
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    fontSize: 14,
+                    color: "#f5f5f5",
+                    lineHeight: 1.6,
+                    resize: "none",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    fontFamily: "inherit",
+                  }}
+                />
+              )}
+            </div>
+
+            {error && (
+              <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 12, padding: "12px 20px", marginBottom: 24 }}>
+                <p style={{ fontSize: 14, color: "#f87171", margin: 0 }}>{error}</p>
+              </div>
+            )}
+
+            {/* Re-evaluate button */}
+            <button
+              onClick={handleReEvaluate}
+              disabled={isReEvaluating || evalsRemaining <= 0}
+              style={{
+                width: "100%",
+                padding: "14px 0",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                border: "none",
+                cursor: isReEvaluating || evalsRemaining <= 0 ? "not-allowed" : "pointer",
+                background: isReEvaluating || evalsRemaining <= 0 ? "rgba(38,38,38,0.6)" : "#fff",
+                color: isReEvaluating || evalsRemaining <= 0 ? "#525252" : "#0a0a0a",
+                marginBottom: 12,
+              }}
+            >
+              {isReEvaluating ? "Re-evaluating..." : evalsRemaining <= 0 ? "No evaluations remaining" : hasAnyChange ? "Re-evaluate with changes" : "Re-evaluate with fresh data"}
+            </button>
+
+            {/* Eval limit indicator */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              padding: "10px 16px",
+              borderRadius: 12,
+              background: evalsRemaining <= 0 ? "rgba(239,68,68,0.08)" : evalsRemaining === 1 ? "rgba(245,158,11,0.08)" : "rgba(38,38,38,0.4)",
+              border: `1px solid ${evalsRemaining <= 0 ? "rgba(239,68,68,0.2)" : evalsRemaining === 1 ? "rgba(245,158,11,0.2)" : "rgba(64,64,64,0.3)"}`,
+            }}>
+              <span style={{
+                fontSize: 13,
+                color: evalsRemaining <= 0 ? "#f87171" : evalsRemaining === 1 ? "#fbbf24" : "#737373",
+              }}>
+                {evalsRemaining <= 0
+                  ? `No evaluations remaining this week.`
+                  : `${evalsRemaining} of ${EVAL_LIMIT} free evaluations remaining this week`}
+              </span>
+            </div>
+
+            {isReEvaluating && (
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 16,
+                padding: "48px 0",
+              }}>
+                <div className="loading-spinner" style={{
+                  width: 40, height: 40,
+                  border: "3px solid #1a1a1a",
+                  borderTop: "3px solid #f5f5f5",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite",
+                }} />
+                <p style={{ fontSize: 14, color: "#737373" }}>Running fresh evaluation with latest market data...</p>
               </div>
             )}
           </PageContainer>
@@ -3050,30 +3481,50 @@ export default function Home() {
             )}
 
             {viewingFromSaved ? (
-              <button
-                onClick={() => {
-                  setViewingFromSaved(false);
-                  setPhaseProgress({});
-                  setCurrentEvaluationId(null);
-                  setCurrentIdeaId(null);
-                  setEditingNotePhase(null);
-                  setNoteText("");
-                  goToMyIdeas();
-                }}
-                style={{
-                  width: "100%",
-                  padding: "14px 0",
-                  borderRadius: 12,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  border: "1px solid rgba(64,64,64,0.6)",
-                  background: "transparent",
-                  color: "#a3a3a3",
-                  cursor: "pointer",
-                }}
-              >
-                ← Back to My Ideas
-              </button>
+              <>
+                <button
+                  onClick={startReEvaluation}
+                  disabled={evalsRemaining <= 0}
+                  style={{
+                    width: "100%",
+                    padding: "14px 0",
+                    borderRadius: 12,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    border: "none",
+                    cursor: evalsRemaining <= 0 ? "not-allowed" : "pointer",
+                    background: evalsRemaining <= 0 ? "rgba(38,38,38,0.6)" : "rgba(108,99,255,0.12)",
+                    color: evalsRemaining <= 0 ? "#525252" : "#a78bfa",
+                    marginBottom: 10,
+                  }}
+                >
+                  {evalsRemaining <= 0 ? "No evaluations remaining" : "Re-evaluate with fresh data"}
+                </button>
+                <button
+                  onClick={() => {
+                    setViewingFromSaved(false);
+                    setPhaseProgress({});
+                    setCurrentEvaluationId(null);
+                    setCurrentIdeaId(null);
+                    setEditingNotePhase(null);
+                    setNoteText("");
+                    goToMyIdeas();
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "14px 0",
+                    borderRadius: 12,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    border: "1px solid rgba(64,64,64,0.6)",
+                    background: "transparent",
+                    color: "#a3a3a3",
+                    cursor: "pointer",
+                  }}
+                >
+                  ← Back to My Ideas
+                </button>
+              </>
             ) : (
               <button
                 onClick={() => {
