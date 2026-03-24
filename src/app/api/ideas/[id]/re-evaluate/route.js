@@ -6,27 +6,16 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Helper: authenticate request
 async function authenticate(request) {
   const authHeader = request.headers.get("authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
-
   const token = authHeader.replace("Bearer ", "");
-  const {
-    data: { user },
-    error,
-  } = await supabaseAdmin.auth.getUser(token);
-
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) return null;
   return user;
 }
 
-// ============================================
-// GET /api/ideas/[id] — Load full idea + evaluation
-// Supports ?evaluation_id=X to load a specific evaluation.
-// Without it, loads the latest evaluation for this idea.
-// ============================================
-export async function GET(request, { params }) {
+export async function POST(request, { params }) {
   try {
     const user = await authenticate(request);
     if (!user) {
@@ -34,15 +23,13 @@ export async function GET(request, { params }) {
     }
 
     const { id: ideaId } = await params;
-
     if (!ideaId) {
       return NextResponse.json({ error: "Missing idea ID." }, { status: 400 });
     }
 
-    // Fetch idea — must belong to this user
     const { data: idea, error: ideaError } = await supabaseAdmin
       .from("ideas")
-      .select("id, title, raw_idea_text, profile_context_json, status, created_at")
+      .select("id, user_id")
       .eq("id", ideaId)
       .eq("user_id", user.id)
       .single();
@@ -51,124 +38,81 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Idea not found." }, { status: 404 });
     }
 
-    // Check if a specific evaluation_id was requested
-    const { searchParams } = new URL(request.url);
-    const requestedEvalId = searchParams.get("evaluation_id");
+    const body = await request.json();
+    const { analysis, revision_notes, alternative_name } = body;
 
-    let evaluation;
-
-    if (requestedEvalId) {
-      // Fetch specific evaluation
-      const { data: evalData, error: evalError } = await supabaseAdmin
-        .from("evaluations")
-        .select("*")
-        .eq("id", requestedEvalId)
-        .eq("idea_id", ideaId)
-        .eq("user_id", user.id)
-        .single();
-
-      if (evalError || !evalData) {
-        return NextResponse.json({ error: "Evaluation not found." }, { status: 404 });
-      }
-      evaluation = evalData;
-    } else {
-      // Fetch latest evaluation for this idea
-      const { data: evalData, error: evalError } = await supabaseAdmin
-        .from("evaluations")
-        .select("*")
-        .eq("idea_id", ideaId)
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (evalError || !evalData) {
-        return NextResponse.json({ error: "Evaluation not found." }, { status: 404 });
-      }
-      evaluation = evalData;
+    if (!analysis) {
+      return NextResponse.json({ error: "Missing analysis data." }, { status: 400 });
     }
 
-    // Reconstruct the analysis object in the exact shape page.js expects.
-    const analysis = {
-      evaluation: {
-        overall_score: evaluation.weighted_overall_score,
-        market_demand: evaluation.scoring_json?.market_demand || {
-          score: evaluation.market_demand_score,
-          explanation: "",
-        },
-        monetization: evaluation.scoring_json?.monetization || {
-          score: evaluation.monetization_score,
-          explanation: "",
-        },
-        originality: evaluation.scoring_json?.originality || {
-          score: evaluation.originality_score,
-          explanation: "",
-        },
-        technical_complexity: evaluation.scoring_json?.technical_complexity || {
-          score: evaluation.technical_complexity_score,
-          explanation: "",
-        },
-        marketplace_note: evaluation.scoring_json?.marketplace_note || null,
-        summary: evaluation.summary_text || "",
-      },
-      competition: {
-        competitors: evaluation.competitors_json || [],
-        differentiation: evaluation.competition_summary || "",
-        data_source: evaluation.data_source || "llm_generated",
-      },
-      phases: evaluation.roadmap_json || [],
-      tools: evaluation.tools_json || [],
-      estimates: evaluation.estimates_json || {},
-      classification: evaluation.classification || "commercial",
-      scope_warning: evaluation.scope_warning || false,
-      _meta: evaluation.meta_json || {},
+    const evaluation = analysis.evaluation || {};
+    const competition = analysis.competition || {};
+    const scoring = {
+      market_demand: evaluation.market_demand || {},
+      monetization: evaluation.monetization || {},
+      originality: evaluation.originality || {},
+      technical_complexity: evaluation.technical_complexity || {},
+      marketplace_note: evaluation.marketplace_note || null,
     };
 
-    return NextResponse.json({
-      idea,
-      analysis,
-      evaluation_id: evaluation.id,
-      profile: idea.profile_context_json || {},
-    });
-  } catch (err) {
-    console.error("Get idea error:", err);
-    return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
-  }
-}
+    const metaJson = {
+      ...(analysis._meta || {}),
+      revision_notes: revision_notes || null,
+    };
 
-// ============================================
-// DELETE /api/ideas/[id] — Soft-delete (archive) an idea
-// ============================================
-export async function DELETE(request, { params }) {
-  try {
-    const user = await authenticate(request);
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-    }
+    const { data: newEval, error: insertError } = await supabaseAdmin
+      .from("evaluations")
+      .insert({
+        idea_id: ideaId,
+        user_id: user.id,
+        evaluation_mode: "free_single",
+        prompt_version: analysis._meta?.prompt_version || "v3.5",
+        search_strategy_version: analysis._meta?.search_strategy_version || "v2",
+        score_formula_version: analysis._meta?.score_formula_version || "v2",
+        keywords_used: analysis._meta?.keywords_used || null,
+        evidence_json: analysis._meta?.evidence || null,
+        meta_json: metaJson,
+        competitors_json: competition.competitors || [],
+        competition_summary: competition.differentiation || "",
+        data_source: competition.data_source || "llm_generated",
+        classification: analysis.classification || "commercial",
+        scope_warning: analysis.scope_warning || false,
+        scoring_json: scoring,
+        roadmap_json: analysis.phases || [],
+        tools_json: analysis.tools || [],
+        estimates_json: analysis.estimates || {},
+        market_demand_score: evaluation.market_demand?.score || 0,
+        monetization_score: evaluation.monetization?.score || 0,
+        originality_score: evaluation.originality?.score || 0,
+        technical_complexity_score: evaluation.technical_complexity?.score || 0,
+        weighted_overall_score: evaluation.overall_score || 0,
+        summary_text: evaluation.summary || "",
+      })
+      .select("id")
+      .single();
 
-    const { id: ideaId } = await params;
-
-    if (!ideaId) {
-      return NextResponse.json({ error: "Missing idea ID." }, { status: 400 });
-    }
-
-    // Soft delete: set status to 'archived'
-    const { error: archiveError } = await supabaseAdmin
-      .from("ideas")
-      .update({ status: "archived", updated_at: new Date().toISOString() })
-      .eq("id", ideaId)
-      .eq("user_id", user.id);
-
-    if (archiveError) {
+    if (insertError) {
+      console.error("Insert re-evaluation failed:", insertError);
       return NextResponse.json(
-        { error: `Failed to archive: ${archiveError.message}` },
+        { error: "Failed to save alternative: " + insertError.message },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true });
+    if (alternative_name) {
+      await supabaseAdmin
+        .from("ideas")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", ideaId)
+        .eq("user_id", user.id);
+    }
+
+    return NextResponse.json({
+      success: true,
+      evaluation_id: newEval.id,
+    });
   } catch (err) {
-    console.error("Archive idea error:", err);
+    console.error("Re-evaluate save error:", err);
     return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
   }
 }

@@ -108,14 +108,31 @@ export async function GET(request) {
       const sortedEvals = (idea.evaluations || []).sort(
         (a, b) => new Date(b.created_at) - new Date(a.created_at)
       );
-      const eval_ = sortedEvals[0];
+
+      // Attach per-evaluation progress for popup display
+      const evalsWithProgress = sortedEvals.map((ev) => {
+        const evProgress = progressMap[ev.id];
+        const totalPhases = ev.roadmap_json?.length || 0;
+        return {
+          ...ev,
+          progress: {
+            completed: evProgress?.completed || 0,
+            total_phases: totalPhases,
+            has_progress: (evProgress?.total || 0) > 0,
+            completed_phases: evProgress?.completed_phases || [],
+          },
+        };
+      });
+
+      // Use the Original (oldest) evaluation for hub card display
+      const eval_ = evalsWithProgress[evalsWithProgress.length - 1];
       const totalPhases = eval_?.roadmap_json?.length || 0;
       const evalProgress = eval_ ? progressMap[eval_.id] : null;
 
       return {
         ...idea,
-        evaluations: sortedEvals,
-        evaluation_count: sortedEvals.length,
+        evaluations: evalsWithProgress,
+        evaluation_count: evalsWithProgress.length,
         progress: {
           completed: evalProgress?.completed || 0,
           total_phases: totalPhases,

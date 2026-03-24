@@ -536,6 +536,7 @@ export default function Home() {
   const [reEvalChange2Type, setReEvalChange2Type] = useState(""); // same options
   const [reEvalChange2Text, setReEvalChange2Text] = useState("");
   const [reEvalOriginalIdea, setReEvalOriginalIdea] = useState(""); // original idea text for display
+  const [loadedIdeaText, setLoadedIdeaText] = useState(""); // full idea text including revisions (for re-eval of alternatives)
   const [isReEvaluating, setIsReEvaluating] = useState(false);
   const [isReEvalResult, setIsReEvalResult] = useState(false); // true when showing re-eval results (not yet saved)
   const [reEvalRevisionNotes, setReEvalRevisionNotes] = useState(null); // stored for saving later
@@ -879,7 +880,7 @@ export default function Home() {
 
   // Start re-evaluation flow from saved idea view
   const startReEvaluation = () => {
-    setReEvalOriginalIdea(idea);
+    setReEvalOriginalIdea(loadedIdeaText || idea);
     setReEvalChange1Type("");
     setReEvalChange1Text("");
     setReEvalChange2Type("");
@@ -1029,6 +1030,7 @@ export default function Home() {
     setMyIdeasLoading(true);
     setMyIdeasError("");
     setShowAlternativesPopup(false);
+    setPhaseProgress({}); // Clear stale progress immediately so alternatives don't share state
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -1052,6 +1054,24 @@ export default function Home() {
       setCurrentIdeaId(ideaId);
       setCurrentEvaluationId(data.evaluation_id);
       setViewingFromSaved(true);
+
+      // Reconstruct the full idea text including revisions (for re-evaluating alternatives)
+      let fullIdeaText = data.idea.raw_idea_text;
+      const revisionNotes = data.analysis?._meta?.revision_notes;
+      if (revisionNotes && Array.isArray(revisionNotes) && revisionNotes.length > 0) {
+        const changeLabel = (type) => {
+          if (type === "target_user") return "Target user";
+          if (type === "problem") return "Problem it solves";
+          if (type === "core_idea") return "Core idea";
+          return "";
+        };
+        revisionNotes.forEach((rev) => {
+          if (rev.type && rev.text) {
+            fullIdeaText += `\n\n[REVISION — ${changeLabel(rev.type)} changed to: ${rev.text}]`;
+          }
+        });
+      }
+      setLoadedIdeaText(fullIdeaText);
 
       // Fetch progress for this evaluation
       if (data.evaluation_id) {
@@ -1692,13 +1712,13 @@ export default function Home() {
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {alternativesData.evaluations.map((ev, index) => {
+                  {[...alternativesData.evaluations].reverse().map((ev, index) => {
                     const evScore = ev.weighted_overall_score || 0;
                     const evDate = new Date(ev.created_at).toLocaleDateString("en-US", {
                       month: "short", day: "numeric", year: "numeric",
                     });
-                    const isOriginal = index === alternativesData.evaluations.length - 1;
-                    const altLabel = isOriginal ? "Original" : `Alternative ${alternativesData.evaluations.length - 1 - index}`;
+                    const isOriginal = index === 0;
+                    const altLabel = isOriginal ? "Original" : `Alternative ${index}`;
 
                     return (
                       <button
@@ -1740,9 +1760,62 @@ export default function Home() {
                           <div style={{ fontSize: 13, fontWeight: 500, color: isOriginal ? "#a3a3a3" : "#a78bfa" }}>
                             {altLabel}
                           </div>
-                          <div style={{ fontSize: 11, color: "#525252", marginTop: 2 }}>
-                            {evDate}
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                            <span style={{ fontSize: 11, color: "#525252" }}>{evDate}</span>
+                            {ev.progress?.has_progress && (
+                              <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                                <div style={{ display: "flex", gap: 1 }}>
+                                  {Array.from({ length: ev.progress.total_phases || 0 }).map((_, idx) => {
+                                    const phaseKey = `phase_${idx + 1}`;
+                                    const isCompleted = (ev.progress.completed_phases || []).includes(phaseKey);
+                                    return (
+                                      <div key={idx} style={{
+                                        width: 10,
+                                        height: 3,
+                                        borderRadius: 1.5,
+                                        background: isCompleted ? "#10b981" : "#262626",
+                                      }} />
+                                    );
+                                  })}
+                                </div>
+                                <span style={{ fontSize: 9, color: "#525252" }}>
+                                  {ev.progress.completed}/{ev.progress.total_phases}
+                                </span>
+                              </div>
+                            )}
                           </div>
+                        </div>
+
+                        {/* Mini score bars */}
+                        <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+                          {[
+                            { label: "MD", score: ev.market_demand_score },
+                            { label: "MO", score: ev.monetization_score },
+                            { label: "OR", score: ev.originality_score },
+                            { label: "TC", score: ev.technical_complexity_score },
+                          ].map((m, i) => (
+                            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                              <div style={{
+                                width: 5,
+                                height: 24,
+                                background: "#1a1a1a",
+                                borderRadius: 2,
+                                overflow: "hidden",
+                                display: "flex",
+                                flexDirection: "column-reverse",
+                              }}>
+                                <div style={{
+                                  width: "100%",
+                                  height: `${((m.score || 0) / 10) * 100}%`,
+                                  background: i === 3
+                                    ? (m.score >= 8 ? "#ef4444" : m.score >= 6 ? "#f59e0b" : "#3b82f6")
+                                    : getScoreColor(m.score || 0),
+                                  borderRadius: 2,
+                                }} />
+                              </div>
+                              <span style={{ fontSize: 7, color: "#404040", fontWeight: 500 }}>{m.label}</span>
+                            </div>
+                          ))}
                         </div>
 
                         <span style={{ fontSize: 14, color: "#404040" }}>→</span>
@@ -1820,7 +1893,8 @@ export default function Home() {
                   </p>
                 </div>
                 {myIdeas.map((savedIdea) => {
-                  const eval_ = savedIdea.evaluations?.[0];
+                  const evals = savedIdea.evaluations || [];
+                  const eval_ = evals.length > 0 ? evals[evals.length - 1] : null;
                   const score = eval_?.weighted_overall_score || 0;
                   const date = new Date(savedIdea.created_at).toLocaleDateString("en-US", {
                     month: "short",

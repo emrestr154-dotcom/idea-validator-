@@ -6,28 +6,15 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Helper: authenticate request
 async function authenticate(request) {
   const authHeader = request.headers.get("authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
-
   const token = authHeader.replace("Bearer ", "");
-  const {
-    data: { user },
-    error,
-  } = await supabaseAdmin.auth.getUser(token);
-
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) return null;
   return user;
 }
 
-// ============================================
-// GET /api/ideas/[id] — Load full idea + evaluation
-// Returns the reconstructed analysis object that page.js renders.
-// Fetches the LATEST evaluation for this idea (supports future
-// re-evaluation where one idea has multiple evaluation snapshots).
-// Now also returns evaluation_id for progress tracking.
-// ============================================
 export async function GET(request, { params }) {
   try {
     const user = await authenticate(request);
@@ -36,12 +23,10 @@ export async function GET(request, { params }) {
     }
 
     const { id: ideaId } = await params;
-
     if (!ideaId) {
       return NextResponse.json({ error: "Missing idea ID." }, { status: 400 });
     }
 
-    // Fetch idea — must belong to this user
     const { data: idea, error: ideaError } = await supabaseAdmin
       .from("ideas")
       .select("id, title, raw_idea_text, profile_context_json, status, created_at")
@@ -53,21 +38,40 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Idea not found." }, { status: 404 });
     }
 
-    // Fetch latest evaluation for this idea
-    const { data: evaluation, error: evalError } = await supabaseAdmin
-      .from("evaluations")
-      .select("*")
-      .eq("idea_id", ideaId)
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+    const { searchParams } = new URL(request.url);
+    const requestedEvalId = searchParams.get("evaluation_id");
 
-    if (evalError || !evaluation) {
-      return NextResponse.json({ error: "Evaluation not found." }, { status: 404 });
+    let evaluation;
+
+    if (requestedEvalId) {
+      const { data: evalData, error: evalError } = await supabaseAdmin
+        .from("evaluations")
+        .select("*")
+        .eq("id", requestedEvalId)
+        .eq("idea_id", ideaId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (evalError || !evalData) {
+        return NextResponse.json({ error: "Evaluation not found." }, { status: 404 });
+      }
+      evaluation = evalData;
+    } else {
+      const { data: evalData, error: evalError } = await supabaseAdmin
+        .from("evaluations")
+        .select("*")
+        .eq("idea_id", ideaId)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (evalError || !evalData) {
+        return NextResponse.json({ error: "Evaluation not found." }, { status: 404 });
+      }
+      evaluation = evalData;
     }
 
-    // Reconstruct the analysis object in the exact shape page.js expects.
     const analysis = {
       evaluation: {
         overall_score: evaluation.weighted_overall_score,
@@ -115,9 +119,6 @@ export async function GET(request, { params }) {
   }
 }
 
-// ============================================
-// DELETE /api/ideas/[id] — Soft-delete (archive) an idea
-// ============================================
 export async function DELETE(request, { params }) {
   try {
     const user = await authenticate(request);
@@ -126,12 +127,10 @@ export async function DELETE(request, { params }) {
     }
 
     const { id: ideaId } = await params;
-
     if (!ideaId) {
       return NextResponse.json({ error: "Missing idea ID." }, { status: 400 });
     }
 
-    // Soft delete: set status to 'archived'
     const { error: archiveError } = await supabaseAdmin
       .from("ideas")
       .update({ status: "archived", updated_at: new Date().toISOString() })
@@ -140,7 +139,7 @@ export async function DELETE(request, { params }) {
 
     if (archiveError) {
       return NextResponse.json(
-        { error: `Failed to archive: ${archiveError.message}` },
+        { error: "Failed to archive: " + archiveError.message },
         { status: 500 }
       );
     }
