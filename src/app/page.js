@@ -549,6 +549,9 @@ export default function Home() {
   const [streamSteps, setStreamSteps] = useState([]); // array of { step, message, done }
   const streamRef = useRef(null); // ref to track if stream should be aborted
 
+  // Pro mode (dev toggle — uses chained pipeline)
+  const [proMode, setProMode] = useState(false);
+
   // Listen for auth state changes (login, logout, session restore)
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -676,10 +679,10 @@ export default function Home() {
   };
 
   // SSE streaming helper — reads events from /api/analyze and returns the final analysis
-  const analyzeWithStream = async (ideaText, profileData) => {
+  const analyzeWithStream = async (ideaText, profileData, endpoint = "/api/analyze") => {
     setStreamSteps([]);
 
-    const res = await fetch("/api/analyze", {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ idea: ideaText, profile: profileData }),
@@ -720,7 +723,17 @@ export default function Home() {
               setStreamSteps((prev) => [...prev, { step: "complete", message: "Evaluation complete ✓", done: true }]);
             } else if (event.step.endsWith("_start")) {
               // In-progress step (no checkmark yet)
-              setStreamSteps((prev) => [...prev, { step: event.step, message: event.message, done: false }]);
+              // For stage starts, also mark previous stage as done
+              setStreamSteps((prev) => {
+                const updated = prev.map((s) => {
+                  // Mark stage1_start done when stage2_start arrives
+                  if (event.step === "stage2_start" && s.step === "stage1_start") return { ...s, done: true };
+                  // Mark stage2_start done when stage3_start arrives
+                  if (event.step === "stage3_start" && s.step === "stage2_start") return { ...s, done: true };
+                  return s;
+                });
+                return [...updated, { step: event.step, message: event.message, done: false }];
+              });
             } else if (event.step.endsWith("_done") || event.step === "evidence_ready" || event.step === "scoring") {
               // Mark previous related _start step as done, add this as completed
               setStreamSteps((prev) => {
@@ -729,12 +742,16 @@ export default function Home() {
                   if (event.step === "keywords_done" && s.step === "keywords_start") return { ...s, done: true };
                   // Mark search_start done when first search result arrives
                   if ((event.step === "github_done" || event.step === "serper_done") && s.step === "search_start") return { ...s, done: true };
+                  // Mark stage starts done when their corresponding done arrives
+                  if (event.step === "stage1_done" && s.step === "stage1_start") return { ...s, done: true };
+                  if (event.step === "stage2_done" && s.step === "stage2_start") return { ...s, done: true };
+                  if (event.step === "stage3_done" && s.step === "stage3_start") return { ...s, done: true };
                   return s;
                 });
                 return [...updated, { step: event.step, message: event.message, done: true }];
               });
             } else if (event.step === "evaluating") {
-              // Evaluating is in-progress (longest step)
+              // Evaluating is in-progress (longest step) — free tier only
               setStreamSteps((prev) => [...prev, { step: event.step, message: event.message, done: false }]);
             }
           } catch (e) {
@@ -753,9 +770,9 @@ export default function Home() {
       throw new Error("Analysis failed — no result received.");
     }
 
-    // Mark evaluating step as done
+    // Mark any remaining in-progress steps as done (evaluating for free, stages for pro)
     setStreamSteps((prev) =>
-      prev.map((s) => (s.step === "evaluating" ? { ...s, done: true } : s))
+      prev.map((s) => (s.done ? s : { ...s, done: true }))
     );
 
     // Check for ethics block
@@ -812,7 +829,8 @@ export default function Home() {
     setIsReEvalResult(false);
     setReEvalRevisionNotes(null);
     try {
-      const result = await analyzeWithStream(idea, profile);
+      const endpoint = proMode ? "/api/analyze-pro" : "/api/analyze";
+      const result = await analyzeWithStream(idea, profile, endpoint);
 
       if (result.ethicsBlocked) {
         setError(result.message);
@@ -1638,6 +1656,44 @@ export default function Home() {
               </div>
             )}
 
+            {/* DEV TOGGLE: Pro mode — remove before launch */}
+            {user && (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+                marginBottom: 16,
+                padding: "8px 16px",
+                borderRadius: 8,
+                background: proMode ? "rgba(139,92,246,0.1)" : "rgba(38,38,38,0.3)",
+                border: `1px solid ${proMode ? "rgba(139,92,246,0.3)" : "rgba(64,64,64,0.2)"}`,
+                transition: "all 0.2s ease",
+              }}>
+                <button
+                  onClick={() => setProMode(!proMode)}
+                  style={{
+                    background: proMode ? "#8b5cf6" : "#404040",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 6,
+                    padding: "4px 12px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.05em",
+                    cursor: "pointer",
+                    fontFamily: "monospace",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {proMode ? "PRO ✓" : "PRO"}
+                </button>
+                <span style={{ fontSize: 12, color: proMode ? "#a78bfa" : "#525252", fontFamily: "monospace" }}>
+                  {proMode ? "3-stage chained pipeline (Discover → Judge → Act)" : "Standard single-call evaluation"}
+                </span>
+              </div>
+            )}
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
               <span style={{ fontSize: 14, color: "#525252", fontFamily: "monospace" }}>
                 {idea.length > 0 ? `${idea.length} characters` : ""}
@@ -1654,10 +1710,12 @@ export default function Home() {
                   cursor: !idea.trim() || isAnalyzing || evalsRemaining <= 0 ? "not-allowed" : "pointer",
                   ...(!idea.trim() || isAnalyzing || evalsRemaining <= 0
                     ? { background: "rgba(38,38,38,0.6)", color: "#525252" }
-                    : { background: "#fff", color: "#0a0a0a" }),
+                    : proMode
+                      ? { background: "#8b5cf6", color: "#fff" }
+                      : { background: "#fff", color: "#0a0a0a" }),
                 }}
               >
-                {isAnalyzing ? "Analyzing..." : evalsRemaining <= 0 ? "Limit Reached" : "Analyze Idea"}
+                {isAnalyzing ? "Analyzing..." : evalsRemaining <= 0 ? "Limit Reached" : proMode ? "Pro Analyze" : "Analyze Idea"}
               </button>
             </div>
 
@@ -1711,8 +1769,8 @@ export default function Home() {
                   boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03)",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, paddingBottom: 10, borderBottom: "1px solid #1a1a1a" }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 8px rgba(16,185,129,0.5)" }} />
-                    <span style={{ color: "#525252", fontSize: 11, letterSpacing: "0.08em" }}>EVALUATION PIPELINE</span>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: proMode ? "#8b5cf6" : "#10b981", boxShadow: proMode ? "0 0 8px rgba(139,92,246,0.5)" : "0 0 8px rgba(16,185,129,0.5)" }} />
+                    <span style={{ color: "#525252", fontSize: 11, letterSpacing: "0.08em" }}>{proMode ? "PRO EVALUATION PIPELINE" : "EVALUATION PIPELINE"}</span>
                   </div>
                   {streamSteps.map((s, i) => (
                     <div key={i} style={{
@@ -1723,7 +1781,7 @@ export default function Home() {
                       opacity: s.done ? 0.8 : 1,
                       animation: "fadeInStep 0.3s ease-out",
                     }}>
-                      <span style={{ color: s.done ? "#10b981" : "#f59e0b", flexShrink: 0, width: 16, textAlign: "center" }}>
+                      <span style={{ color: s.done ? (proMode ? "#8b5cf6" : "#10b981") : "#f59e0b", flexShrink: 0, width: 16, textAlign: "center" }}>
                         {s.done ? "✓" : "›"}
                       </span>
                       <span style={{ wordBreak: "break-word" }}>{s.message}</span>
