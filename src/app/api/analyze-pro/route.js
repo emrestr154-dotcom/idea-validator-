@@ -5,19 +5,26 @@ import { searchGitHub } from "../../../lib/services/github";
 import { searchSerper } from "../../../lib/services/serper";
 import { buildCompetitorContext, buildCompetitorInstructions } from "../../../lib/services/competitors";
 import { STAGE1_SYSTEM_PROMPT } from "../../../lib/services/prompt-stage1";
-import { STAGE2_SYSTEM_PROMPT } from "../../../lib/services/prompt-stage2";
+import { STAGE2A_SYSTEM_PROMPT } from "../../../lib/services/prompt-stage2a";
+import { STAGE2B_SYSTEM_PROMPT } from "../../../lib/services/prompt-stage2b";
+import { STAGE_TC_SYSTEM_PROMPT } from "../../../lib/services/prompt-stage-tc";
 import { STAGE3_SYSTEM_PROMPT } from "../../../lib/services/prompt-stage3";
 import { calculateOverallScore } from "../../../lib/services/scoring";
 
 // ============================================
 // MAIN API HANDLER — PAID TIER CHAINED PIPELINE
 // ============================================
-// Orchestrates: Keywords → Search → Stage 1 (Discover) → Stage 2 (Judge) → Stage 3 (Act) → Score
-// Three sequential Sonnet calls. Each stage's output feeds into the next.
-// Streams progress via Server-Sent Events (SSE)
+// Orchestrates: Keywords → Search → Stage 1 (Discover) → [Stage 2a + Stage TC in parallel] → Stage 2b (Score MD/MO/OR) → Stage 3 (Act) → Assembly
+//
+// Stage TC runs in PARALLEL with Stage 2a — it receives ONLY idea + profile,
+// never sees Stage 1 output. This physically prevents TC from correlating with
+// competition-informed metrics (OR, MD, MO).
+//
+// Stage 2a extracts 3 evidence packets (MD, MO, OR) — no TC packet.
+// Stage 2b scores 3 metrics from those packets.
+// TC score is merged in during assembly.
 //
 // Output schema is identical to the free tier route — the frontend renders both the same way.
-// The difference is HOW the output is produced: grounded, chained reasoning vs single-call.
 
 export async function POST(request) {
   try {
@@ -42,6 +49,20 @@ export async function POST(request) {
         }
 
         try {
+          // Helper to clean markdown fences from LLM JSON responses
+          function cleanJsonResponse(text) {
+            let cleaned = text.trim();
+            if (cleaned.startsWith("```json")) {
+              cleaned = cleaned.slice(7);
+            } else if (cleaned.startsWith("```")) {
+              cleaned = cleaned.slice(3);
+            }
+            if (cleaned.endsWith("```")) {
+              cleaned = cleaned.slice(0, -3);
+            }
+            return cleaned.trim();
+          }
+
           // ============================
           // PHASE 1: EVIDENCE GATHERING
           // (Same as free tier — keywords + search)
@@ -150,7 +171,7 @@ ${idea}`;
 
           let stage1Result;
           try {
-            stage1Result = JSON.parse(stage1Text);
+            stage1Result = JSON.parse(cleanJsonResponse(stage1Text));
           } catch (parseError) {
             console.error("Stage 1 parse failed:", stage1Text);
             sendEvent({ step: "error", message: "Stage 1 failed to parse. Please try again." });
@@ -173,13 +194,14 @@ ${idea}`;
           });
 
           // ============================
-          // STAGE 2: JUDGE
-          // Score the idea against Stage 1 context
+          // STAGE 2a + STAGE TC: RUN IN PARALLEL
+          // Stage 2a: Extract MD/MO/OR evidence packets from Stage 1
+          // Stage TC: Score TC from idea + profile ONLY (no Stage 1 data)
           // ============================
 
-          sendEvent({ step: "stage2_start", message: "Stage 2: Scoring idea against competition..." });
+          sendEvent({ step: "stage2a_start", message: "Stage 2a: Extracting evidence + scoring technical complexity..." });
 
-          const stage2UserMessage = `${userProfile}
+          const stage2aUserMessage = `${userProfile}
 
 USER'S AI PRODUCT IDEA:
 ${idea}
@@ -187,34 +209,110 @@ ${idea}
 === STAGE 1 RESULTS: COMPETITION ANALYSIS ===
 ${JSON.stringify(stage1Result)}`;
 
-          const stage2Response = await client.messages.create({
-            model: "claude-sonnet-4-20250514",
-            max_tokens: 4096,
-            temperature: 0,
-            system: STAGE2_SYSTEM_PROMPT,
-            messages: [{ role: "user", content: stage2UserMessage }],
-          });
+          const stageTcUserMessage = `${userProfile}
 
-          const stage2Text = stage2Response.content[0].text;
+USER'S AI PRODUCT IDEA:
+${idea}`;
 
-          let stage2Result;
+          // Run Stage 2a and Stage TC in parallel
+          const [stage2aResponse, stageTcResponse] = await Promise.all([
+            client.messages.create({
+              model: "claude-sonnet-4-20250514",
+              max_tokens: 2000,
+              temperature: 0,
+              system: STAGE2A_SYSTEM_PROMPT,
+              messages: [{ role: "user", content: stage2aUserMessage }],
+            }),
+            client.messages.create({
+              model: "claude-sonnet-4-20250514",
+              max_tokens: 1000,
+              temperature: 0,
+              system: STAGE_TC_SYSTEM_PROMPT,
+              messages: [{ role: "user", content: stageTcUserMessage }],
+            }),
+          ]);
+
+          const stage2aText = stage2aResponse.content[0].text;
+          const stageTcText = stageTcResponse.content[0].text;
+
+          let stage2aResult;
           try {
-            stage2Result = JSON.parse(stage2Text);
+            stage2aResult = JSON.parse(cleanJsonResponse(stage2aText));
           } catch (parseError) {
-            console.error("Stage 2 parse failed:", stage2Text);
-            sendEvent({ step: "error", message: "Stage 2 failed to parse. Please try again." });
+            console.error("Stage 2a parse failed:", stage2aText);
+            sendEvent({ step: "error", message: "Stage 2a failed to parse. Please try again." });
+            controller.close();
+            return;
+          }
+
+          let stageTcResult;
+          try {
+            stageTcResult = JSON.parse(cleanJsonResponse(stageTcText));
+          } catch (parseError) {
+            console.error("Stage TC parse failed:", stageTcText);
+            sendEvent({ step: "error", message: "Stage TC failed to parse. Please try again." });
             controller.close();
             return;
           }
 
           sendEvent({
-            step: "stage2_done",
-            message: "Stage 2 complete: Scores calculated",
+            step: "stage2a_done",
+            message: `Stage 2a complete: Evidence packets extracted | TC: ${stageTcResult.technical_complexity?.score || "?"}`,
           });
 
           // ============================
+          // STAGE 2b: SCORE MD/MO/OR
+          // Score from evidence packets ONLY — no raw Stage 1, no TC
+          // ============================
+
+          sendEvent({ step: "stage2b_start", message: "Stage 2b: Scoring idea from evidence..." });
+
+          // CRITICAL: Stage 2b receives idea + evidence packets ONLY.
+          // No raw Stage 1 output. No TC data. No user profile (not needed for MD/MO/OR).
+          const stage2bUserMessage = `${userProfile}
+
+USER'S AI PRODUCT IDEA:
+${idea}
+
+=== EVIDENCE PACKETS FROM STAGE 2a ===
+${JSON.stringify(stage2aResult)}`;
+
+          const stage2bResponse = await client.messages.create({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 4096,
+            temperature: 0,
+            system: STAGE2B_SYSTEM_PROMPT,
+            messages: [{ role: "user", content: stage2bUserMessage }],
+          });
+
+          const stage2bText = stage2bResponse.content[0].text;
+
+          let stage2bResult;
+          try {
+            stage2bResult = JSON.parse(cleanJsonResponse(stage2bText));
+          } catch (parseError) {
+            console.error("Stage 2b parse failed:", stage2bText);
+            sendEvent({ step: "error", message: "Stage 2b failed to parse. Please try again." });
+            controller.close();
+            return;
+          }
+
+          sendEvent({
+            step: "stage2b_done",
+            message: "Stage 2b complete: Scores calculated",
+          });
+
+          // ============================
+          // MERGE TC INTO EVALUATION
+          // Stage 2b has MD/MO/OR. Stage TC has TC. Combine them.
+          // ============================
+
+          const ev = stage2bResult.evaluation;
+          ev.technical_complexity = stageTcResult.technical_complexity;
+
+          // ============================
           // STAGE 3: ACT
-          // Generate roadmap informed by Stage 1 + Stage 2
+          // Generate roadmap informed by Stage 1 + combined scores
           // ============================
 
           sendEvent({ step: "stage3_start", message: "Stage 3: Building adaptive roadmap..." });
@@ -228,7 +326,7 @@ ${idea}
 ${JSON.stringify(stage1Result)}
 
 === STAGE 2 RESULTS: SCORING ===
-${JSON.stringify(stage2Result)}`;
+${JSON.stringify(stage2bResult)}`;
 
           const stage3Response = await client.messages.create({
             model: "claude-sonnet-4-20250514",
@@ -242,7 +340,7 @@ ${JSON.stringify(stage2Result)}`;
 
           let stage3Result;
           try {
-            stage3Result = JSON.parse(stage3Text);
+            stage3Result = JSON.parse(cleanJsonResponse(stage3Text));
           } catch (parseError) {
             console.error("Stage 3 parse failed:", stage3Text);
             sendEvent({ step: "error", message: "Stage 3 failed to parse. Please try again." });
@@ -262,11 +360,9 @@ ${JSON.stringify(stage2Result)}`;
 
           sendEvent({ step: "scoring", message: "Calculating final scores..." });
 
-          const ev = stage2Result.evaluation;
           ev.overall_score = calculateOverallScore(ev);
 
           // SANITY CHECK: Flag score-explanation contradictions
-          // Catches outlier runs where Stage 2 scores don't match rubric level language
           const sanityWarnings = [];
           const metrics = [
             { name: "market_demand", score: ev.market_demand?.score, explanation: ev.market_demand?.explanation },
@@ -309,6 +405,8 @@ ${JSON.stringify(stage2Result)}`;
               evaluation_mode: "paid_chained",
               domain_risk_flags: stage1Result.domain_risk_flags,
               stage1_competitor_count: competitorCount,
+              evidence_packets: stage2aResult.evidence_packets,
+              tc_isolated: true,
             },
             _meta: {
               github_results: githubResults.length,
