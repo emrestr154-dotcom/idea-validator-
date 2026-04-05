@@ -15,6 +15,13 @@ async function authenticate(request) {
   return user;
 }
 
+// ============================================
+// POST /api/ideas/[id]/re-evaluate
+// Save a new evaluation on an existing idea (alternative/branch).
+// Does NOT create a new idea — adds evaluation row to same idea.
+// Does NOT count against the 5-idea save limit.
+// Stores revision_notes and changed_fields in meta_json.
+// ============================================
 export async function POST(request, { params }) {
   try {
     const user = await authenticate(request);
@@ -27,6 +34,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Missing idea ID." }, { status: 400 });
     }
 
+    // Verify idea exists and belongs to user
     const { data: idea, error: ideaError } = await supabaseAdmin
       .from("ideas")
       .select("id, user_id")
@@ -39,80 +47,84 @@ export async function POST(request, { params }) {
     }
 
     const body = await request.json();
-    const { analysis, revision_notes, alternative_name } = body;
+    const { analysis, revision_notes, alternative_name, changed_fields } = body;
 
     if (!analysis) {
       return NextResponse.json({ error: "Missing analysis data." }, { status: 400 });
     }
 
-    const evaluation = analysis.evaluation || {};
-    const competition = analysis.competition || {};
-    const scoring = {
-      market_demand: evaluation.market_demand || {},
-      monetization: evaluation.monetization || {},
-      originality: evaluation.originality || {},
-      technical_complexity: evaluation.technical_complexity || {},
-      marketplace_note: evaluation.marketplace_note || null,
+    // Build scoring_json with failure_risks and confidence_level included
+    const scoringJson = {
+      market_demand: analysis.evaluation?.market_demand || null,
+      monetization: analysis.evaluation?.monetization || null,
+      originality: analysis.evaluation?.originality || null,
+      technical_complexity: analysis.evaluation?.technical_complexity || null,
+      marketplace_note: analysis.evaluation?.marketplace_note || null,
+      failure_risks: analysis.evaluation?.failure_risks || [],
+      confidence_level: analysis.evaluation?.confidence_level || null,
     };
 
+    // Build meta_json with revision_notes and changed_fields
     const metaJson = {
       ...(analysis._meta || {}),
       revision_notes: revision_notes || null,
+      changed_fields: changed_fields || null,
+      alternative_name: alternative_name || null,
     };
 
-    const { data: newEval, error: insertError } = await supabaseAdmin
+    // Insert new evaluation row
+    const { data: evalData, error: evalError } = await supabaseAdmin
       .from("evaluations")
       .insert({
         idea_id: ideaId,
         user_id: user.id,
-        evaluation_mode: "free_single",
-        prompt_version: analysis._meta?.prompt_version || "v3.5",
-        search_strategy_version: analysis._meta?.search_strategy_version || "v2",
-        score_formula_version: analysis._meta?.score_formula_version || "v2",
+        evaluation_mode: analysis._meta?.evaluation_mode || "free_single",
+        prompt_version: analysis._meta?.prompt_version || null,
+        search_strategy_version: analysis._meta?.search_strategy_version || null,
+        score_formula_version: analysis._meta?.score_formula_version || null,
         keywords_used: analysis._meta?.keywords_used || null,
         evidence_json: analysis._meta?.evidence || null,
         meta_json: metaJson,
-        competitors_json: competition.competitors || [],
-        competition_summary: competition.differentiation || "",
-        data_source: competition.data_source || "llm_generated",
+        competitors_json: analysis.competition?.competitors || [],
+        competition_summary: analysis.competition?.differentiation || "",
+        data_source: analysis.competition?.data_source || "llm_generated",
         classification: analysis.classification || "commercial",
         scope_warning: analysis.scope_warning || false,
-        scoring_json: scoring,
+        scoring_json: scoringJson,
         roadmap_json: analysis.phases || [],
         tools_json: analysis.tools || [],
         estimates_json: analysis.estimates || {},
-        market_demand_score: evaluation.market_demand?.score || 0,
-        monetization_score: evaluation.monetization?.score || 0,
-        originality_score: evaluation.originality?.score || 0,
-        technical_complexity_score: evaluation.technical_complexity?.score || 0,
-        weighted_overall_score: evaluation.overall_score || 0,
-        summary_text: evaluation.summary || "",
+        market_demand_score: analysis.evaluation?.market_demand?.score || 0,
+        monetization_score: analysis.evaluation?.monetization?.score || 0,
+        originality_score: analysis.evaluation?.originality?.score || 0,
+        technical_complexity_score: analysis.evaluation?.technical_complexity?.score || 0,
+        weighted_overall_score: analysis.evaluation?.overall_score || 0,
+        summary_text: analysis.evaluation?.summary || "",
       })
       .select("id")
       .single();
 
-    if (insertError) {
-      console.error("Insert re-evaluation failed:", insertError);
+    if (evalError) {
+      console.error("Re-evaluate insert error:", evalError);
       return NextResponse.json(
-        { error: "Failed to save alternative: " + insertError.message },
+        { error: "Failed to save evaluation: " + evalError.message },
         { status: 500 }
       );
     }
 
-    if (alternative_name) {
-      await supabaseAdmin
-        .from("ideas")
-        .update({ updated_at: new Date().toISOString() })
-        .eq("id", ideaId)
-        .eq("user_id", user.id);
-    }
+    // Update idea's updated_at timestamp
+    await supabaseAdmin
+      .from("ideas")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", ideaId)
+      .eq("user_id", user.id);
 
     return NextResponse.json({
       success: true,
-      evaluation_id: newEval.id,
+      evaluation_id: evalData.id,
     });
   } catch (err) {
-    console.error("Re-evaluate save error:", err);
+    console.error("Re-evaluate error:", err);
     return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
   }
 }
