@@ -998,7 +998,7 @@ export default function Home() {
     const ideaTitle = myIdeas.find(i => i.id === currentIdeaId)?.title || "";
     setReEvalContextSnapshot(analysis ? {
       title: ideaTitle,
-      overall: analysis.evaluation?.weighted_overall,
+      overall: analysis.evaluation?.overall_score || analysis.evaluation?.weighted_overall || 0,
       md: analysis.evaluation?.market_demand?.score,
       mo: analysis.evaluation?.monetization?.score,
       or: analysis.evaluation?.originality?.score,
@@ -2689,7 +2689,7 @@ export default function Home() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                   <div>
                     <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#525252", margin: "0 0 6px" }}>Current evaluation</p>
-                    <p style={{ fontSize: 15, fontWeight: 600, color: "#f5f5f5", margin: 0 }}>{reEvalContextSnapshot.title || "Untitled"}</p>
+                    <p style={{ fontSize: 15, fontWeight: 600, color: "#f5f5f5", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{reEvalContextSnapshot.title || "Untitled"}</p>
                   </div>
                   <div style={{
                     width: 48,
