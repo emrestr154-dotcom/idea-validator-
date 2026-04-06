@@ -57,7 +57,7 @@ function buildTree(ideas, rootId) {
 // ============================================
 // NODE CARD
 // ============================================
-function NodeCard({ idea, isRoot, isSelected, onToggleSelect, onClickNode }) {
+function NodeCard({ idea, isRoot, isSelected, comparing, onToggleSelect, onClickNode }) {
   const evals = idea.evaluations || [];
   const latestEval = evals.length > 0 ? evals[0] : null; // sorted desc by list route
   const score = latestEval?.weighted_overall_score || 0;
@@ -85,38 +85,40 @@ function NodeCard({ idea, isRoot, isSelected, onToggleSelect, onClickNode }) {
         onClickNode(idea.id);
       }}
     >
-      {/* Checkbox */}
-      <div
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleSelect(idea.id);
-        }}
-        style={{
-          position: "absolute",
-          top: 8,
-          left: 8,
-          width: 20,
-          height: 20,
-          borderRadius: 5,
-          border: isSelected
-            ? "2px solid #60a5fa"
-            : "2px solid rgba(64,64,64,0.6)",
-          background: isSelected ? "rgba(59,130,246,0.2)" : "transparent",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 11,
-          color: "#60a5fa",
-          fontWeight: 700,
-          cursor: "pointer",
-          zIndex: 2,
-        }}
-      >
-        {isSelected ? "✓" : ""}
-      </div>
+      {/* Checkbox — only in compare mode */}
+      {comparing && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelect(idea.id);
+          }}
+          style={{
+            position: "absolute",
+            top: 8,
+            left: 8,
+            width: 20,
+            height: 20,
+            borderRadius: 5,
+            border: isSelected
+              ? "2px solid #60a5fa"
+              : "2px solid rgba(64,64,64,0.6)",
+            background: isSelected ? "rgba(59,130,246,0.2)" : "transparent",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 11,
+            color: "#60a5fa",
+            fontWeight: 700,
+            cursor: "pointer",
+            zIndex: 2,
+          }}
+        >
+          {isSelected ? "✓" : ""}
+        </div>
+      )}
 
       {/* Score circle + Title row */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: comparing ? 20 : 0 }}>
         <div
           style={{
             width: 38,
@@ -165,7 +167,7 @@ function NodeCard({ idea, isRoot, isSelected, onToggleSelect, onClickNode }) {
           flexWrap: "wrap",
           gap: 4,
           marginTop: 8,
-          marginLeft: 20,
+          marginLeft: comparing ? 20 : 0,
         }}
       >
         {isRoot && (
@@ -227,7 +229,7 @@ function NodeCard({ idea, isRoot, isSelected, onToggleSelect, onClickNode }) {
 // ============================================
 // TREE NODE (recursive with connectors)
 // ============================================
-function TreeNode({ node, isRoot, selected, onToggleSelect, onClickNode }) {
+function TreeNode({ node, isRoot, selected, comparing, onToggleSelect, onClickNode }) {
   const { idea, children } = node;
   const isSelected = selected.some((s) => s.ideaId === idea.id);
 
@@ -243,6 +245,7 @@ function TreeNode({ node, isRoot, selected, onToggleSelect, onClickNode }) {
         idea={idea}
         isRoot={isRoot}
         isSelected={isSelected}
+        comparing={comparing}
         onToggleSelect={onToggleSelect}
         onClickNode={onClickNode}
       />
@@ -315,6 +318,7 @@ function TreeNode({ node, isRoot, selected, onToggleSelect, onClickNode }) {
                   node={child}
                   isRoot={false}
                   selected={selected}
+                  comparing={comparing}
                   onToggleSelect={onToggleSelect}
                   onClickNode={onClickNode}
                 />
@@ -338,6 +342,7 @@ export default function LineageView({
   onStartComparison,
 }) {
   const [selected, setSelected] = useState([]);
+  const [comparing, setComparing] = useState(false);
 
   // Build ideas map
   const ideasMap = {};
@@ -475,6 +480,7 @@ export default function LineageView({
             node={tree}
             isRoot={true}
             selected={selected}
+            comparing={comparing}
             onToggleSelect={toggleSelect}
             onClickNode={(ideaId) => onViewIdea(ideaId)}
           />
@@ -482,70 +488,89 @@ export default function LineageView({
       </div>
 
       {/* Bottom action bar */}
-      {selected.length > 0 && (
+      {nodeCount >= 2 && (
         <div
           style={{
             position: "sticky",
-            bottom: 16,
+          bottom: 16,
+          display: "flex",
+          justifyContent: "center",
+          gap: 12,
+          padding: "16px 0",
+          zIndex: 10,
+        }}
+      >
+        <div
+          style={{
+            background: "rgba(23,23,23,0.95)",
+            border: "1px solid rgba(38,38,38,0.8)",
+            borderRadius: 12,
+            padding: "12px 24px",
             display: "flex",
-            justifyContent: "center",
-            gap: 12,
-            padding: "16px 0",
-            zIndex: 10,
+            alignItems: "center",
+            gap: 16,
+            backdropFilter: "blur(8px)",
           }}
         >
-          <div
-            style={{
-              background: "rgba(23,23,23,0.95)",
-              border: "1px solid rgba(38,38,38,0.8)",
-              borderRadius: 12,
-              padding: "12px 24px",
-              display: "flex",
-              alignItems: "center",
-              gap: 16,
-              backdropFilter: "blur(8px)",
-            }}
-          >
-            <span style={{ fontSize: 13, color: "#a3a3a3" }}>
-              {selected.length === 1
-                ? "Select 1 more to compare"
-                : "2 selected"}
-            </span>
+          {!comparing ? (
             <button
-              onClick={handleCompare}
-              disabled={selected.length !== 2}
+              onClick={() => setComparing(true)}
               style={{
                 fontSize: 13,
                 fontWeight: 600,
                 padding: "8px 20px",
                 borderRadius: 8,
                 border: "none",
-                cursor:
-                  selected.length === 2 ? "pointer" : "not-allowed",
-                background:
-                  selected.length === 2
-                    ? "#60a5fa"
-                    : "rgba(38,38,38,0.6)",
-                color: selected.length === 2 ? "#fff" : "#525252",
+                cursor: "pointer",
+                background: "rgba(59,130,246,0.15)",
+                color: "#60a5fa",
                 transition: "all 0.2s",
               }}
             >
-              Compare Selected
+              Compare
             </button>
-            <button
-              onClick={() => setSelected([])}
-              style={{
-                fontSize: 12,
-                color: "#737373",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              Clear
-            </button>
-          </div>
+          ) : (
+            <>
+              <span style={{ fontSize: 13, color: "#a3a3a3" }}>
+                {selected.length === 0
+                  ? "Select 2 nodes to compare"
+                  : selected.length === 1
+                  ? "Select 1 more"
+                  : "2 selected"}
+              </span>
+              <button
+                onClick={handleCompare}
+                disabled={selected.length !== 2}
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: "8px 20px",
+                  borderRadius: 8,
+                  border: "none",
+                  cursor: selected.length === 2 ? "pointer" : "not-allowed",
+                  background: selected.length === 2 ? "#60a5fa" : "rgba(38,38,38,0.6)",
+                  color: selected.length === 2 ? "#fff" : "#525252",
+                  transition: "all 0.2s",
+                }}
+              >
+                Compare Selected
+              </button>
+              <button
+                onClick={() => { setComparing(false); setSelected([]); }}
+                style={{
+                  fontSize: 12,
+                  color: "#737373",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+            </>
+          )}
         </div>
+      </div>
       )}
     </div>
   );
