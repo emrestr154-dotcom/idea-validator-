@@ -2468,7 +2468,7 @@ export default function Home() {
                         Cancel
                       </button>
                       <button
-                        onClick={startComparison}
+                        onClick={() => startComparison()}
                         disabled={compareSelected.length !== 2 || compareLoading}
                         style={{
                           padding: "6px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600,
