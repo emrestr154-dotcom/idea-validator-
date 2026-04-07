@@ -419,43 +419,131 @@ function ToolsScreen({ data, isMobile, activeTab }) {
 }
 
 // ============================================
-// KEY TRADEOFFS
+// KEY TRADEOFFS (Sonnet-powered synthesis)
 // ============================================
-function TradeoffsScreen({ data, ideaA, ideaB }) {
+function TradeoffsScreen({ data, ideaA, ideaB, tradeoffsResult, tradeoffsLoading, tradeoffsError }) {
   const nA = shortTitle(ideaA.title, 28), nB = shortTitle(ideaB.title, 28);
-  return (
-    <div style={{ padding: "20px 24px" }}>
-      <p style={{ fontSize: 14, fontWeight: 600, color: "#a3a3a3", margin: "0 0 20px 0" }}>Key tradeoffs</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        {data.tradeoffs.map((t, i) => {
-          const wn = t.winner === "a" ? nA : t.winner === "b" ? nB : null;
-          const ln = t.loser === "b" ? nB : t.loser === "a" ? nA : null;
-          return (
-            <div key={i}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+
+  // Loading state
+  if (tradeoffsLoading) {
+    return (
+      <div style={{ padding: "48px 24px", textAlign: "center" }}>
+        <div style={{ display: "inline-block", width: 28, height: 28, border: "2.5px solid rgba(96,165,250,0.2)", borderTop: "2.5px solid #60a5fa", borderRadius: "50%", animation: "tradeoffsSpin 0.8s linear infinite", marginBottom: 16 }} />
+        <p style={{ fontSize: 14, color: "#737373", margin: 0 }}>Analyzing tradeoffs...</p>
+        <p style={{ fontSize: 12, color: "#404040", margin: "8px 0 0 0" }}>Identifying decision-relevant tensions between these ideas</p>
+        <style>{`@keyframes tradeoffsSpin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // Error state — fall back to basic score comparison
+  if (tradeoffsError || !tradeoffsResult) {
+    return (
+      <div style={{ padding: "20px 24px" }}>
+        {tradeoffsError && (
+          <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10, padding: "12px 16px", marginBottom: 20 }}>
+            <p style={{ fontSize: 12, color: "#f87171", margin: 0 }}>Could not generate tradeoff analysis: {tradeoffsError}</p>
+          </div>
+        )}
+        <p style={{ fontSize: 14, fontWeight: 600, color: "#a3a3a3", margin: "0 0 16px 0" }}>Score comparison</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {data.tradeoffs.map((t, i) => {
+            const wn = t.winner === "a" ? nA : t.winner === "b" ? nB : null;
+            return (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 12, color: "#525252", minWidth: 130 }}>{t.label}</span>
                 {wn ? (<><span style={{ fontSize: 13, fontWeight: 600, color: "#f5f5f5" }}>{wn}</span><span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 8, background: "rgba(16,185,129,0.15)", color: "#34d399" }}>{t.deltaBadge}</span></>) : (<span style={{ fontSize: 12, color: "#525252" }}>Tied at {t.scoreA.toFixed(1)}</span>)}
               </div>
-              <div style={{ marginLeft: 130, display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" style={{ flexShrink: 0, marginTop: 2 }}><path d="M6 2L10 7H2Z" fill="#10b981" /></svg>
-                  <p style={{ fontSize: 12, color: "#737373", margin: 0, lineHeight: 1.5 }}><span style={{ fontWeight: 600, color: "#a3a3a3" }}>{wn || nA}:</span> {t.winnerExpl}</p>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Sonnet-generated tradeoff synthesis
+  const tr = tradeoffsResult;
+  return (
+    <div style={{ padding: "20px 24px" }}>
+      {/* Decision summary */}
+      <div style={{ background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.15)", borderRadius: 14, padding: "16px 20px", marginBottom: 24 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px 0" }}>Decision summary</p>
+        <p style={{ fontSize: 13, color: "#d4d4d4", lineHeight: 1.7, margin: 0 }}>{tr.decision_summary}</p>
+      </div>
+
+      {/* Tradeoff cards */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {(tr.tradeoffs || []).map((t, i) => (
+          <div key={i} style={{ background: "rgba(23,23,23,0.6)", border: "1px solid rgba(38,38,38,0.8)", borderRadius: 14, padding: "16px 20px", overflow: "hidden" }}>
+            {/* Tension label */}
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#f5f5f5", margin: "0 0 14px 0" }}>{t.tension}</p>
+
+            {/* Idea A */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#3b82f6", flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#60a5fa" }}>{nA}</span>
+              </div>
+              <div style={{ marginLeft: 14 }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 4 }}>
+                  <svg width="10" height="10" viewBox="0 0 10 10" style={{ flexShrink: 0, marginTop: 3 }}><path d="M5 1L9 6H1Z" fill="#10b981" /></svg>
+                  <p style={{ fontSize: 12, color: "#a3a3a3", margin: 0, lineHeight: 1.6 }}>{t.idea_a_advantage}</p>
                 </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" style={{ flexShrink: 0, marginTop: 2 }}><path d="M6 10L2 5H10Z" fill="#ef4444" /></svg>
-                  <p style={{ fontSize: 12, color: "#737373", margin: 0, lineHeight: 1.5 }}><span style={{ fontWeight: 600, color: "#a3a3a3" }}>{ln || nB}:</span> {t.loserExpl}</p>
+                <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                  <svg width="10" height="10" viewBox="0 0 10 10" style={{ flexShrink: 0, marginTop: 3 }}><path d="M5 9L1 4H9Z" fill="#ef4444" /></svg>
+                  <p style={{ fontSize: 12, color: "#737373", margin: 0, lineHeight: 1.6 }}>{t.idea_a_cost}</p>
                 </div>
               </div>
             </div>
-          );
-        })}
-        <div style={{ borderTop: "1px solid rgba(38,38,38,0.6)", paddingTop: 16, marginTop: 4 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 12, color: "#525252", minWidth: 130 }}>Overall</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#f5f5f5" }}>{data.overallA >= data.overallB ? nA : nB}</span>
-            <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 8, background: "rgba(16,185,129,0.15)", color: "#34d399" }}>{data.overallA.toFixed(1)} vs {data.overallB.toFixed(1)}</span>
+
+            {/* Idea B */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#a78bfa", flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#a78bfa" }}>{nB}</span>
+              </div>
+              <div style={{ marginLeft: 14 }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 4 }}>
+                  <svg width="10" height="10" viewBox="0 0 10 10" style={{ flexShrink: 0, marginTop: 3 }}><path d="M5 1L9 6H1Z" fill="#10b981" /></svg>
+                  <p style={{ fontSize: 12, color: "#a3a3a3", margin: 0, lineHeight: 1.6 }}>{t.idea_b_advantage}</p>
+                </div>
+                <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                  <svg width="10" height="10" viewBox="0 0 10 10" style={{ flexShrink: 0, marginTop: 3 }}><path d="M5 9L1 4H9Z" fill="#ef4444" /></svg>
+                  <p style={{ fontSize: 12, color: "#737373", margin: 0, lineHeight: 1.6 }}>{t.idea_b_cost}</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <p style={{ fontSize: 12, color: "#737373", margin: "0 0 0 130px", lineHeight: 1.6 }}>{data.overallSummary}</p>
+        ))}
+      </div>
+
+      {/* Dominant idea assessment (only if Sonnet found clear dominance) */}
+      {tr.dominant_idea && tr.dominant_reason && (
+        <div style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 14, padding: "16px 20px", marginTop: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" style={{ flexShrink: 0 }}><path d="M7 1L9 5H13L10 8L11 12L7 10L3 12L4 8L1 5H5Z" fill="#34d399" /></svg>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#34d399" }}>
+              {tr.dominant_idea === "idea_a" ? nA : nB} is stronger overall
+            </span>
+          </div>
+          <p style={{ fontSize: 12, color: "#a3a3a3", lineHeight: 1.6, margin: 0 }}>{tr.dominant_reason}</p>
+        </div>
+      )}
+
+      {/* Score reference bar at bottom */}
+      <div style={{ borderTop: "1px solid rgba(38,38,38,0.6)", paddingTop: 16, marginTop: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#3b82f6" }} />
+            <span style={{ fontSize: 12, color: "#737373" }}>{nA}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, fontFamily: "monospace", color: getScoreColor(data.overallA) }}>{data.overallA.toFixed(1)}</span>
+          </div>
+          <span style={{ fontSize: 12, color: "#333" }}>vs</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#a78bfa" }} />
+            <span style={{ fontSize: 12, color: "#737373" }}>{nB}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, fontFamily: "monospace", color: getScoreColor(data.overallB) }}>{data.overallB.toFixed(1)}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -465,13 +553,109 @@ function TradeoffsScreen({ data, ideaA, ideaB }) {
 // ============================================
 // MAIN COMPARISON VIEW
 // ============================================
-export default function ComparisonView({ ideaA, ideaB, onBack }) {
+// ============================================
+// TRADEOFFS DATA PREPROCESSOR
+// ============================================
+function buildTradeoffsPayload(ideaA, ideaB, data) {
+  const extractCompSummary = (analysis) => analysis.competition?.competition_summary || analysis.competition?.summary || "";
+  const extractCompCount = (analysis) => (analysis.competition?.competitors || []).length;
+  const extractRisks = (analysis) => {
+    const r = analysis.evaluation?.failure_risks || analysis.failure_risks || analysis.risks || [];
+    if (!Array.isArray(r)) return [];
+    return r.map(x => typeof x === "string" ? x : x.description || x.risk || x.title || "").filter(Boolean);
+  };
+
+  const aE = ideaA.analysis.evaluation, bE = ideaB.analysis.evaluation;
+  const aScores = { md: aE.market_demand.score, mo: aE.monetization.score, or: aE.originality.score, tc: aE.technical_complexity.score, overall: aE.overall_score };
+  const bScores = { md: bE.market_demand.score, mo: bE.monetization.score, or: bE.originality.score, tc: bE.technical_complexity.score, overall: bE.overall_score };
+
+  const risksA = extractRisks(ideaA.analysis), risksB = extractRisks(ideaB.analysis);
+
+  // Competitor asymmetry
+  const directA = (ideaA.analysis.competition?.competitors || []).filter(c => c.competitor_type === "direct").length;
+  const directB = (ideaB.analysis.competition?.competitors || []).filter(c => c.competitor_type === "direct").length;
+  const competitorAsymmetry = `${ideaA.title} faces ${directA} direct competitor${directA !== 1 ? "s" : ""} out of ${extractCompCount(ideaA.analysis)} total. ${ideaB.title} faces ${directB} direct competitor${directB !== 1 ? "s" : ""} out of ${extractCompCount(ideaB.analysis)} total. ${data.sharedNames.size} shared competitor${data.sharedNames.size !== 1 ? "s" : ""}.`;
+
+  // Risk asymmetry
+  const riskAsymmetry = `${ideaA.title} has ${risksA.length} failure risk${risksA.length !== 1 ? "s" : ""}${risksA.length > 0 ? ": " + risksA.slice(0, 3).join("; ") : ""}. ${ideaB.title} has ${risksB.length} failure risk${risksB.length !== 1 ? "s" : ""}${risksB.length > 0 ? ": " + risksB.slice(0, 3).join("; ") : ""}.`;
+
+  // Execution asymmetry
+  const estA = ideaA.analysis.estimates || {}, estB = ideaB.analysis.estimates || {};
+  const executionAsymmetry = `${ideaA.title}: ${estA.duration || "N/A"} duration, ${estA.difficulty || "N/A"} difficulty, ${(ideaA.analysis.phases || []).length} roadmap phases. ${ideaB.title}: ${estB.duration || "N/A"} duration, ${estB.difficulty || "N/A"} difficulty, ${(ideaB.analysis.phases || []).length} roadmap phases.`;
+
+  return {
+    idea_a: {
+      title: ideaA.title,
+      scores: aScores,
+      failure_risks: risksA,
+      confidence: aE.confidence_level || null,
+      competition_summary: extractCompSummary(ideaA.analysis),
+      competitor_count: extractCompCount(ideaA.analysis),
+      roadmap_phase_count: (ideaA.analysis.phases || []).length,
+      estimated_duration: estA.duration || "N/A",
+      estimated_difficulty: estA.difficulty || "N/A",
+    },
+    idea_b: {
+      title: ideaB.title,
+      scores: bScores,
+      failure_risks: risksB,
+      confidence: bE.confidence_level || null,
+      competition_summary: extractCompSummary(ideaB.analysis),
+      competitor_count: extractCompCount(ideaB.analysis),
+      roadmap_phase_count: (ideaB.analysis.phases || []).length,
+      estimated_duration: estB.duration || "N/A",
+      estimated_difficulty: estB.difficulty || "N/A",
+    },
+    deltas: {
+      md: +(aScores.md - bScores.md).toFixed(1),
+      mo: +(aScores.mo - bScores.mo).toFixed(1),
+      or: +(aScores.or - bScores.or).toFixed(1),
+      tc: +(aScores.tc - bScores.tc).toFixed(1),
+      overall: +(aScores.overall - bScores.overall).toFixed(1),
+    },
+    shared_competitors: [...data.sharedNames],
+    competitor_asymmetry: competitorAsymmetry,
+    risk_asymmetry: riskAsymmetry,
+    execution_asymmetry: executionAsymmetry,
+  };
+}
+
+export default function ComparisonView({ ideaA, ideaB, onBack, authToken }) {
   const [cur, setCur] = useState(0);
   const [tab, setTab] = useState("a");
   const [isMobile, setIsMobile] = useState(false);
+  const [tradeoffsResult, setTradeoffsResult] = useState(null);
+  const [tradeoffsLoading, setTradeoffsLoading] = useState(false);
+  const [tradeoffsError, setTradeoffsError] = useState("");
   useEffect(() => { const c = () => setIsMobile(window.innerWidth < 768); c(); window.addEventListener("resize", c); return () => window.removeEventListener("resize", c); }, []);
 
   const data = prepareComparisonData(ideaA, ideaB);
+
+  // Background fetch tradeoffs on mount
+  useEffect(() => {
+    if (!authToken || tradeoffsResult) return;
+    const fetchTradeoffs = async () => {
+      setTradeoffsLoading(true);
+      setTradeoffsError("");
+      try {
+        const payload = buildTradeoffsPayload(ideaA, ideaB, data);
+        const res = await fetch("/api/compare/tradeoffs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ comparisonData: payload }),
+        });
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        setTradeoffsResult(json.tradeoffs);
+      } catch (err) {
+        console.error("Tradeoffs fetch error:", err);
+        setTradeoffsError(err.message || "Failed to generate tradeoff analysis");
+      } finally {
+        setTradeoffsLoading(false);
+      }
+    };
+    fetchTradeoffs();
+  }, [authToken]);
   const screen = SCREENS[cur];
   const tA = shortTitle(ideaA.title, 28), tB = shortTitle(ideaB.title, 28);
 
@@ -482,7 +666,7 @@ export default function ComparisonView({ ideaA, ideaB, onBack }) {
       case "risks": return <RisksScreen data={data} isMobile={isMobile} activeTab={tab} />;
       case "roadmap": return <RoadmapScreen data={data} isMobile={isMobile} activeTab={tab} />;
       case "tools": return <ToolsScreen data={data} isMobile={isMobile} activeTab={tab} />;
-      case "tradeoffs": return <TradeoffsScreen data={data} ideaA={ideaA} ideaB={ideaB} />;
+      case "tradeoffs": return <TradeoffsScreen data={data} ideaA={ideaA} ideaB={ideaB} tradeoffsResult={tradeoffsResult} tradeoffsLoading={tradeoffsLoading} tradeoffsError={tradeoffsError} />;
       default: return null;
     }
   })();

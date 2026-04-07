@@ -1530,6 +1530,7 @@ export default function Home() {
           title: getTitleForSelection(selections[1], resB),
           analysis: resB.analysis,
         },
+        authToken: session.access_token,
       });
       setCompareMode(true);
     } catch (err) {
@@ -2062,6 +2063,7 @@ export default function Home() {
             <ComparisonView
               ideaA={compareData.ideaA}
               ideaB={compareData.ideaB}
+              authToken={compareData.authToken}
               onBack={() => {
                 setCompareMode(false);
                 setCompareSelecting(false);
