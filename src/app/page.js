@@ -1146,6 +1146,9 @@ export default function Home() {
           }
           setBranchSetAsMain(false);
         }
+
+        // Refresh hub data so lineage view and hub reflect the new branch + main status
+        fetchMyIdeas();
       } else {
         // Normal save: create new idea + evaluation
         const res = await fetch("/api/ideas/save", {
