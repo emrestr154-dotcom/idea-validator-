@@ -4848,6 +4848,24 @@ export default function Home() {
                 {isBranchIdea ? (
                   <>
                     <button
+                      onClick={startReEvaluation}
+                      disabled={evalsRemaining <= 0}
+                      style={{
+                        width: "100%",
+                        padding: "14px 0",
+                        borderRadius: 12,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        border: "none",
+                        cursor: evalsRemaining <= 0 ? "not-allowed" : "pointer",
+                        background: evalsRemaining <= 0 ? "rgba(38,38,38,0.6)" : "rgba(108,99,255,0.12)",
+                        color: evalsRemaining <= 0 ? "#525252" : "#a78bfa",
+                        marginBottom: 10,
+                      }}
+                    >
+                      {evalsRemaining <= 0 ? "No evaluations remaining" : "Evolve this idea"}
+                    </button>
+                    <button
                       onClick={() => {
                         setCurrentScreen("delta");
                         if (!deltaData && !deltaLoading) {
