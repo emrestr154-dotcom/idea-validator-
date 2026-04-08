@@ -152,3 +152,65 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
   }
 }
+
+export async function PATCH(request, { params }) {
+  try {
+    const user = await authenticate(request);
+    if (!user) {
+      return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    }
+
+    const { id: ideaId } = await params;
+    if (!ideaId) {
+      return NextResponse.json({ error: "Missing idea ID." }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const updates = {};
+
+    // Validate status_label if provided
+    if (body.status_label !== undefined) {
+      const allowed = ["exploring", "lead", "parked", "killed"];
+      if (!allowed.includes(body.status_label)) {
+        return NextResponse.json(
+          { error: `Invalid status_label. Must be one of: ${allowed.join(", ")}` },
+          { status: 400 }
+        );
+      }
+      updates.status_label = body.status_label;
+    }
+
+    // Validate title if provided
+    if (body.title !== undefined) {
+      const trimmed = (body.title || "").trim();
+      if (!trimmed) {
+        return NextResponse.json({ error: "Title cannot be empty." }, { status: 400 });
+      }
+      updates.title = trimmed;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update." }, { status: 400 });
+    }
+
+    updates.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabaseAdmin
+      .from("ideas")
+      .update(updates)
+      .eq("id", ideaId)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("PATCH /api/ideas/[id] error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ idea: data });
+  } catch (err) {
+    console.error("PATCH /api/ideas/[id] unexpected error:", err);
+    return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
+  }
+}

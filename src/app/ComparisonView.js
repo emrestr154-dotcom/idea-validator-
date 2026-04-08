@@ -64,17 +64,6 @@ const sourceColors = { github: { bg: "rgba(110,84,148,0.15)", color: "#a78bfa", 
 const SCREENS = [{ key: "competitors", label: "Competitors" }, { key: "scores", label: "Scores" }, { key: "risks", label: "Key risks" }, { key: "roadmap", label: "Roadmap" }, { key: "tools", label: "Tools & estimates" }, { key: "tradeoffs", label: "Key tradeoffs" }];
 const shortTitle = (t, max = 24) => t.length > max ? t.substring(0, max - 1) + "…" : t;
 
-// Shared two-column container used by all screens except scores and tradeoffs
-function TwoCol({ left, right, isMobile, activeTab, padded = true }) {
-  if (isMobile) return <div style={{ padding: padded ? 16 : 0 }}>{activeTab === "a" ? left : right}</div>;
-  return (
-    <div style={{ display: "flex", width: "100%" }}>
-      <div style={{ flex: 1, minWidth: 0, borderRight: "1px solid rgba(38,38,38,0.8)", padding: padded ? 20 : 0, boxSizing: "border-box", overflow: "hidden" }}>{left}</div>
-      <div style={{ flex: 1, minWidth: 0, padding: padded ? 20 : 0, boxSizing: "border-box", overflow: "hidden" }}>{right}</div>
-    </div>
-  );
-}
-
 // Badge pill
 function Badge({ label, color, bg, border }) {
   return <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 9999, border: `1px solid ${border}`, background: bg, color, whiteSpace: "nowrap" }}>{label}</span>;

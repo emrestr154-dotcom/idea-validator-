@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 // ============================================
 // HELPERS
@@ -19,6 +19,14 @@ function getScoreBg(s) {
   if (s >= 4) return "rgba(245,158,11,0.15)";
   return "rgba(239,68,68,0.15)";
 }
+
+const STATUS_CONFIG = {
+  exploring: { label: "Exploring", color: "#60a5fa", bg: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.25)" },
+  lead:      { label: "Lead",      color: "#34d399", bg: "rgba(16,185,129,0.12)", border: "rgba(16,185,129,0.25)" },
+  parked:    { label: "Parked",    color: "#a3a3a3", bg: "rgba(115,115,115,0.12)", border: "rgba(115,115,115,0.25)" },
+  killed:    { label: "Killed",    color: "#f87171", bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.25)" },
+};
+const STATUS_OPTIONS = ["exploring", "lead", "parked", "killed"];
 
 // Walk parent_idea_id chain to find root
 function findRoot(ideaId, ideasMap) {
@@ -55,14 +63,106 @@ function buildTree(ideas, rootId) {
 }
 
 // ============================================
+// STATUS DROPDOWN
+// ============================================
+function StatusDropdown({ currentStatus, onSelect, onClose }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: "absolute",
+        top: "100%",
+        left: 0,
+        marginTop: 4,
+        background: "#1a1a1a",
+        border: "1px solid rgba(64,64,64,0.6)",
+        borderRadius: 8,
+        padding: 4,
+        zIndex: 20,
+        minWidth: 120,
+        boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+      }}
+    >
+      {STATUS_OPTIONS.map((key) => {
+        const cfg = STATUS_CONFIG[key];
+        const isActive = key === currentStatus;
+        return (
+          <div
+            key={key}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(key);
+            }}
+            style={{
+              padding: "6px 10px",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontSize: 11,
+              fontWeight: isActive ? 600 : 400,
+              color: isActive ? cfg.color : "#a3a3a3",
+              background: isActive ? cfg.bg : "transparent",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "rgba(38,38,38,0.6)"; }}
+            onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+          >
+            {cfg.label}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================
 // NODE CARD
 // ============================================
-function NodeCard({ idea, isRoot, isSelected, comparing, onToggleSelect, onClickNode }) {
+function NodeCard({ idea, isRoot, isSelected, comparing, onToggleSelect, onClickNode, onUpdateIdea }) {
   const evals = idea.evaluations || [];
   const latestEval = evals.length > 0 ? evals[0] : null; // sorted desc by list route
   const score = latestEval?.weighted_overall_score || 0;
   const color = getScoreColor(score);
   const bg = getScoreBg(score);
+
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(idea.title);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  const handleRename = () => {
+    const trimmed = editTitle.trim();
+    if (trimmed && trimmed !== idea.title) {
+      onUpdateIdea(idea.id, { title: trimmed });
+    }
+    setEditing(false);
+  };
+
+  const handleStatusChange = (newStatus) => {
+    if (newStatus !== (idea.status_label || "exploring")) {
+      onUpdateIdea(idea.id, { status_label: newStatus });
+    }
+    setStatusOpen(false);
+  };
+
+  const statusKey = idea.status_label || "exploring";
+  const statusCfg = STATUS_CONFIG[statusKey];
 
   return (
     <div
@@ -143,20 +243,69 @@ function NodeCard({ idea, isRoot, isSelected, comparing, onToggleSelect, onClick
             {score.toFixed(1)}
           </span>
         </div>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <p
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: "#e5e5e5",
-              margin: 0,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {idea.title}
-          </p>
+        <div style={{ minWidth: 0, flex: 1, display: "flex", alignItems: "center", gap: 4 }}>
+          {editing ? (
+            <input
+              ref={inputRef}
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onBlur={handleRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRename();
+                if (e.key === "Escape") { setEditTitle(idea.title); setEditing(false); }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#e5e5e5",
+                background: "rgba(38,38,38,0.8)",
+                border: "1px solid rgba(59,130,246,0.4)",
+                borderRadius: 6,
+                padding: "2px 6px",
+                outline: "none",
+                width: "100%",
+                minWidth: 0,
+              }}
+            />
+          ) : (
+            <>
+              <p
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#e5e5e5",
+                  margin: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  flex: 1,
+                  minWidth: 0,
+                }}
+              >
+                {idea.title}
+              </p>
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditTitle(idea.title);
+                  setEditing(true);
+                }}
+                style={{
+                  fontSize: 12,
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  opacity: 0.5,
+                  transition: "opacity 0.15s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.5")}
+                title="Rename idea"
+              >
+                ✏️
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -170,6 +319,37 @@ function NodeCard({ idea, isRoot, isSelected, comparing, onToggleSelect, onClick
           marginLeft: comparing ? 20 : 0,
         }}
       >
+        {/* Status badge — tappable */}
+        <div style={{ position: "relative" }}>
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              setStatusOpen((prev) => !prev);
+            }}
+            style={{
+              fontSize: 9,
+              fontWeight: 600,
+              padding: "2px 7px",
+              borderRadius: 9999,
+              background: statusCfg.bg,
+              color: statusCfg.color,
+              border: `1px solid ${statusCfg.border}`,
+              cursor: "pointer",
+              transition: "all 0.15s",
+              userSelect: "none",
+            }}
+          >
+            {statusCfg.label}
+          </span>
+          {statusOpen && (
+            <StatusDropdown
+              currentStatus={statusKey}
+              onSelect={handleStatusChange}
+              onClose={() => setStatusOpen(false)}
+            />
+          )}
+        </div>
+
         {isRoot && (
           <span
             style={{
@@ -229,7 +409,7 @@ function NodeCard({ idea, isRoot, isSelected, comparing, onToggleSelect, onClick
 // ============================================
 // TREE NODE (recursive with connectors)
 // ============================================
-function TreeNode({ node, isRoot, selected, comparing, onToggleSelect, onClickNode }) {
+function TreeNode({ node, isRoot, selected, comparing, onToggleSelect, onClickNode, onUpdateIdea }) {
   const { idea, children } = node;
   const isSelected = selected.some((s) => s.ideaId === idea.id);
 
@@ -248,6 +428,7 @@ function TreeNode({ node, isRoot, selected, comparing, onToggleSelect, onClickNo
         comparing={comparing}
         onToggleSelect={onToggleSelect}
         onClickNode={onClickNode}
+        onUpdateIdea={onUpdateIdea}
       />
 
       {children.length > 0 && (
@@ -321,6 +502,7 @@ function TreeNode({ node, isRoot, selected, comparing, onToggleSelect, onClickNo
                   comparing={comparing}
                   onToggleSelect={onToggleSelect}
                   onClickNode={onClickNode}
+                  onUpdateIdea={onUpdateIdea}
                 />
               </div>
             ))}
@@ -340,6 +522,7 @@ export default function LineageView({
   onBack,
   onViewIdea,
   onStartComparison,
+  onUpdateIdea,
 }) {
   const [selected, setSelected] = useState([]);
   const [comparing, setComparing] = useState(false);
@@ -483,6 +666,7 @@ export default function LineageView({
             comparing={comparing}
             onToggleSelect={toggleSelect}
             onClickNode={(ideaId) => onViewIdea(ideaId)}
+            onUpdateIdea={onUpdateIdea}
           />
         </div>
       </div>

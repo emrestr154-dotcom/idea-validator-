@@ -532,6 +532,10 @@ export default function Home() {
   const [lineageMode, setLineageMode] = useState(false);
   const [lineageTargetId, setLineageTargetId] = useState(null);
 
+  // Inline idea editing state (hub card rename)
+  const [editingIdeaId, setEditingIdeaId] = useState(null);
+  const [editingIdeaTitle, setEditingIdeaTitle] = useState("");
+
   // Progress tracking state
   const [currentEvaluationId, setCurrentEvaluationId] = useState(null);
   const [currentIdeaId, setCurrentIdeaId] = useState(null);
@@ -1451,6 +1455,34 @@ export default function Home() {
     }
   };
 
+  // Update idea fields (title, status_label) via PATCH
+  const updateIdea = async (ideaId, fields) => {
+    if (!user) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const res = await fetch(`/api/ideas/${ideaId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(fields),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      // Optimistic local update
+      setMyIdeas((prev) =>
+        prev.map((i) => (i.id === ideaId ? { ...i, ...fields } : i))
+      );
+    } catch (err) {
+      console.error("Failed to update idea:", err);
+      setMyIdeasError(err.message || "Failed to update idea.");
+    }
+  };
+
   // Navigate to My Ideas Hub
   const goToMyIdeas = () => {
     setCurrentScreen("myideas");
@@ -2128,6 +2160,7 @@ export default function Home() {
                 setCompareSelected(selectedPair);
                 startComparison(selectedPair);
               }}
+              onUpdateIdea={updateIdea}
             />
           </main>
 
@@ -2579,17 +2612,72 @@ export default function Home() {
 
                         {/* Title + meta */}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <h3 style={{
-                            fontSize: 14,
-                            fontWeight: 600,
-                            color: "#f5f5f5",
-                            margin: 0,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}>
-                            {savedIdea.title}
-                          </h3>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            {editingIdeaId === savedIdea.id ? (
+                              <input
+                                autoFocus
+                                value={editingIdeaTitle}
+                                onChange={(e) => setEditingIdeaTitle(e.target.value)}
+                                onBlur={() => {
+                                  const trimmed = editingIdeaTitle.trim();
+                                  if (trimmed && trimmed !== savedIdea.title) updateIdea(savedIdea.id, { title: trimmed });
+                                  setEditingIdeaId(null);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") { e.target.blur(); }
+                                  if (e.key === "Escape") { setEditingIdeaId(null); }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  fontSize: 14,
+                                  fontWeight: 600,
+                                  color: "#f5f5f5",
+                                  background: "rgba(38,38,38,0.8)",
+                                  border: "1px solid rgba(59,130,246,0.4)",
+                                  borderRadius: 6,
+                                  padding: "2px 6px",
+                                  outline: "none",
+                                  width: "100%",
+                                  minWidth: 0,
+                                }}
+                              />
+                            ) : (
+                              <>
+                                <h3 style={{
+                                  fontSize: 14,
+                                  fontWeight: 600,
+                                  color: "#f5f5f5",
+                                  margin: 0,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  flex: 1,
+                                  minWidth: 0,
+                                }}>
+                                  {savedIdea.title}
+                                </h3>
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingIdeaId(savedIdea.id);
+                                    setEditingIdeaTitle(savedIdea.title);
+                                  }}
+                                  style={{
+                                    fontSize: 12,
+                                    cursor: "pointer",
+                                    flexShrink: 0,
+                                    opacity: 0.4,
+                                    transition: "opacity 0.15s",
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.4")}
+                                  title="Rename idea"
+                                >
+                                  ✏️
+                                </span>
+                              </>
+                            )}
+                          </div>
                           {/* Branch origin label */}
                           {savedIdea.parent_idea_id && (() => {
                             const parentIdea = myIdeas.find(i => i.id === savedIdea.parent_idea_id);
