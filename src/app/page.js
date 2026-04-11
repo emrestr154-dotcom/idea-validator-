@@ -964,7 +964,8 @@ export default function Home() {
       }
 
       // Use SSE streaming
-      const result = await analyzeWithStream(modifiedIdea, profile);
+      const reEvalEndpoint = proMode ? "/api/analyze-pro" : "/api/analyze";
+      const result = await analyzeWithStream(modifiedIdea, profile, reEvalEndpoint);
 
       if (result.ethicsBlocked) {
         setError(result.message);
@@ -3271,7 +3272,41 @@ export default function Home() {
                 <p style={{ fontSize: 14, color: "#f87171", margin: 0 }}>{error}</p>
               </div>
             )}
-
+{/* Pro mode toggle */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              marginBottom: 16,
+              padding: "8px 16px",
+              borderRadius: 8,
+              background: proMode ? "rgba(139,92,246,0.1)" : "rgba(38,38,38,0.3)",
+              border: `1px solid ${proMode ? "rgba(139,92,246,0.3)" : "rgba(64,64,64,0.2)"}`,
+              transition: "all 0.2s ease",
+            }}>
+              <button
+                onClick={() => setProMode(!proMode)}
+                style={{
+                  background: proMode ? "#8b5cf6" : "#404040",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "4px 12px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.05em",
+                  cursor: "pointer",
+                  fontFamily: "monospace",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {proMode ? "PRO ✓" : "PRO"}
+              </button>
+              <span style={{ fontSize: 12, color: proMode ? "#a78bfa" : "#525252", fontFamily: "monospace" }}>
+                {proMode ? "3-stage chained pipeline (Discover → Judge → Act)" : "Standard single-call evaluation"}
+              </span>
+            </div>
             {/* Evaluate button */}
             <button
               onClick={handleReEvaluate}
