@@ -452,6 +452,39 @@ function AuthModal({ onClose, onAuth }) {
 }
 
 // ============================================
+// DEV MODE BADGE (V4S23 — remove before ship)
+// ============================================
+function DevModeBadge({ mode }) {
+  const colorMap = {
+    preview: { bg: "rgba(239,68,68,0.15)", color: "#f87171", border: "rgba(239,68,68,0.3)", label: "PREVIEW" },
+    payg: { bg: "rgba(245,158,11,0.15)", color: "#fbbf24", border: "rgba(245,158,11,0.3)", label: "PAYG" },
+    subscriber: { bg: "rgba(16,185,129,0.15)", color: "#34d399", border: "rgba(16,185,129,0.3)", label: "SUBSCRIBER" },
+  };
+  const c = colorMap[mode] || colorMap.subscriber;
+  return (
+    <div style={{
+      position: "fixed",
+      bottom: 16,
+      right: 16,
+      zIndex: 9999,
+      padding: "6px 14px",
+      borderRadius: 8,
+      background: c.bg,
+      border: `1px solid ${c.border}`,
+      backdropFilter: "blur(8px)",
+      fontSize: 11,
+      fontWeight: 700,
+      fontFamily: "monospace",
+      letterSpacing: "0.08em",
+      color: c.color,
+      pointerEvents: "none",
+    }}>
+      DEV: {c.label}
+    </div>
+  );
+}
+
+// ============================================
 // MAIN APP
 // ============================================
 // ============================================
@@ -586,6 +619,41 @@ export default function Home() {
 
   // Pro mode (dev toggle — uses chained pipeline)
   const [proMode, setProMode] = useState(false);
+
+  // ============================================
+  // ENTITLEMENT SYSTEM (V4S23)
+  // ============================================
+  // Dev mode override via query param: ?mode=preview | ?mode=payg | ?mode=subscriber
+  // Default = subscriber so current production behavior is unchanged until Paddle ships
+  const [devMode, setDevMode] = useState("subscriber");
+  const [devModeExplicit, setDevModeExplicit] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("mode");
+    if (mode === "preview" || mode === "payg" || mode === "subscriber") {
+      setDevMode(mode);
+      setDevModeExplicit(true);
+    }
+  }, []);
+
+  // Central entitlement derivation — computed from devMode (will later derive from real Paddle state)
+  const entitlements = (() => {
+    const isSubscriber = devMode === "subscriber";
+    const isPAYG = devMode === "payg";
+    const isPreview = devMode === "preview";
+
+    return {
+      themeMode: isSubscriber ? "dark" : "light",
+      canUseWorkflow: isSubscriber,
+      canSeeFullContent: isPAYG || isSubscriber, // PAYG paid for it, subscribers always see full
+      saveCap: isSubscriber ? Infinity : 5,
+      isPreviewUser: isPreview,
+      isPAYG,
+      isSubscriber,
+      devMode,
+    };
+  })();
 
   // Listen for auth state changes (login, logout, session restore)
   useEffect(() => {
@@ -2114,8 +2182,8 @@ export default function Home() {
       return "#ef4444";
     };
 
-    // COMPARISON MODE: render ComparisonView instead of hub
-    if (compareMode && compareData) {
+    // COMPARISON MODE: render ComparisonView instead of hub (subscribers only)
+    if (entitlements.canUseWorkflow && compareMode && compareData) {
       return (
         <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column", overflowX: "hidden" }}>
           <header style={headerStyle}>
@@ -2164,8 +2232,8 @@ export default function Home() {
       );
     }
 
-    // LINEAGE MODE: render LineageView instead of hub
-    if (lineageMode && lineageTargetId) {
+    // LINEAGE MODE: render LineageView instead of hub (subscribers only)
+    if (entitlements.canUseWorkflow && lineageMode && lineageTargetId) {
       return (
         <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column", overflowX: "hidden" }}>
           <header style={headerStyle}>
@@ -2227,6 +2295,7 @@ export default function Home() {
 
     return (
       <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column", overflowX: "hidden" }}>
+        {devModeExplicit && <DevModeBadge mode={devMode} />}
         <header style={headerStyle}>
           <PageContainer>
             <div style={{ padding: "16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -2446,7 +2515,9 @@ export default function Home() {
               <h2 style={{ fontSize: 24, fontWeight: 600, margin: "0 0 8px 0" }}>My Ideas</h2>
               <p style={{ fontSize: 14, color: "#737373", margin: 0 }}>
                 {savedIdeasCount > 0
-                  ? `${savedIdeasCount} of ${SAVED_IDEA_LIMIT} ideas saved`
+                  ? entitlements.isSubscriber
+                    ? `${savedIdeasCount} ideas saved`
+                    : `${savedIdeasCount} of ${entitlements.saveCap} ideas saved`
                   : "Your saved evaluations will appear here."}
               </p>
             </div>
@@ -2508,8 +2579,8 @@ export default function Home() {
                   </p>
                 </div>
 
-                {/* Compare button — enters selection mode */}
-                {myIdeas.filter(i => !i.parent_idea_id || i.is_main_version).length >= 2 && !compareSelecting && (
+                {/* Compare button — enters selection mode (workflow feature, subscribers only) */}
+                {entitlements.canUseWorkflow && myIdeas.filter(i => !i.parent_idea_id || i.is_main_version).length >= 2 && !compareSelecting && (
                   <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
                     <button
                       onClick={() => { setCompareSelecting(true); setCompareSelected([]); }}
@@ -2524,8 +2595,8 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* Selection bar — shows when in selection mode */}
-                {compareSelecting && (
+                {/* Selection bar — shows when in selection mode (subscribers only) */}
+                {entitlements.canUseWorkflow && compareSelecting && (
                   <div style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     padding: "10px 18px", borderRadius: 12,
@@ -2750,8 +2821,8 @@ export default function Home() {
                                 }}>★ Main</span>
                               </>
                             )}
-                            {/* Branch children count */}
-                            {(() => {
+                            {/* Branch children count — workflow feature, subscribers only */}
+                            {entitlements.canUseWorkflow && (() => {
                               const childCount = myIdeas.filter(i => i.parent_idea_id === savedIdea.id).length;
                               return childCount > 0 ? (
                                 <>
@@ -2895,7 +2966,7 @@ export default function Home() {
                           <span />
                         )}
                         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          {(savedIdea.parent_idea_id || myIdeas.some(i => i.parent_idea_id === savedIdea.id)) && (
+                          {entitlements.canUseWorkflow && (savedIdea.parent_idea_id || myIdeas.some(i => i.parent_idea_id === savedIdea.id)) && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2938,6 +3009,39 @@ export default function Home() {
                 })}
               </div>
             )}
+
+            {/* Upgrade prompt — non-subscribers only */}
+            {!entitlements.canUseWorkflow && myIdeas.length > 0 && (
+              <div style={{
+                marginTop: 24,
+                padding: "24px",
+                borderRadius: 16,
+                border: "1px solid rgba(108,99,255,0.2)",
+                background: "rgba(108,99,255,0.04)",
+                textAlign: "center",
+              }}>
+                <p style={{ fontSize: 16, fontWeight: 600, color: "#a78bfa", margin: "0 0 8px" }}>
+                  Unlock the full workspace
+                </p>
+                <p style={{ fontSize: 13, color: "#737373", lineHeight: 1.6, margin: "0 0 16px" }}>
+                  Evolve ideas, compare versions side by side, see what changed between iterations, track your decision lineage, and save unlimited ideas.
+                </p>
+                <button
+                  style={{
+                    padding: "10px 24px",
+                    borderRadius: 10,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    border: "1px solid rgba(108,99,255,0.4)",
+                    background: "rgba(108,99,255,0.12)",
+                    color: "#a78bfa",
+                    cursor: "pointer",
+                  }}
+                >
+                  Subscribe to Workspace
+                </button>
+              </div>
+            )}
           </PageContainer>
         </main>
 
@@ -2955,6 +3059,12 @@ export default function Home() {
   // ==========================================
   // EVOLVE THIS IDEA (Re-evaluation Screen)
   // ==========================================
+  // STATE-LEVEL GUARD: Evolve/Re-eval screen is a workflow feature (subscribers only)
+  if (currentScreen === "reeval" && !entitlements.canUseWorkflow) {
+    setCurrentScreen(viewingFromSaved ? "results2" : "results1");
+    return null;
+  }
+
   if (currentScreen === "reeval" && reEvalMode) {
     const hasAnyChange = reEvalTargetUser.trim() || reEvalProblem.trim() || reEvalCoreIdea.trim();
 
@@ -3442,6 +3552,7 @@ export default function Home() {
   if (currentScreen === "results1" && analysis) {
     return (
       <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column", overflowX: "hidden" }}>
+        {devModeExplicit && <DevModeBadge mode={devMode} />}
         <header style={headerStyle}>
           <PageContainer wide>
             <div style={{ padding: "16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -4048,6 +4159,7 @@ export default function Home() {
   if (currentScreen === "results2" && analysis) {
     return (
       <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f5f5f5", display: "flex", flexDirection: "column", overflowX: "hidden" }}>
+        {devModeExplicit && <DevModeBadge mode={devMode} />}
         <header style={headerStyle}>
           <PageContainer wide>
             <div style={{ padding: "16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -4884,9 +4996,9 @@ export default function Home() {
                       border: "1px solid rgba(16,185,129,0.3)",
                       color: "#34d399",
                     }}>
-                      ✓ Saved to My Ideas ({savedIdeasCount}/{SAVED_IDEA_LIMIT})
+                      ✓ Saved to My Ideas {entitlements.isSubscriber ? "" : `(${savedIdeasCount}/${entitlements.saveCap})`}
                     </div>
-                  ) : savedIdeasCount >= SAVED_IDEA_LIMIT ? (
+                  ) : !entitlements.isSubscriber && savedIdeasCount >= entitlements.saveCap ? (
                     <div style={{
                       width: "100%",
                       padding: "14px 0",
@@ -4898,7 +5010,7 @@ export default function Home() {
                       border: "1px solid rgba(245,158,11,0.2)",
                       color: "#fbbf24",
                     }}>
-                      Free tier limit reached ({SAVED_IDEA_LIMIT}/{SAVED_IDEA_LIMIT} ideas saved)
+                      Save limit reached ({entitlements.saveCap}/{entitlements.saveCap} ideas saved)
                     </div>
                   ) : saveStatus === "naming" ? (
                     <div style={{
@@ -4947,7 +5059,7 @@ export default function Home() {
                             color: !ideaName.trim() ? "#525252" : "#60a5fa",
                           }}
                         >
-                          Save ({savedIdeasCount}/{SAVED_IDEA_LIMIT})
+                          Save {entitlements.isSubscriber ? "" : `(${savedIdeasCount}/${entitlements.saveCap})`}
                         </button>
                         <button
                           onClick={() => { setSaveStatus("idle"); setIdeaName(""); }}
@@ -4984,7 +5096,7 @@ export default function Home() {
                           transition: "all 0.2s",
                         }}
                       >
-                        {saveStatus === "saving" ? "Saving..." : `Save to My Ideas (${savedIdeasCount}/${SAVED_IDEA_LIMIT})`}
+                        {saveStatus === "saving" ? "Saving..." : entitlements.isSubscriber ? "Save to My Ideas" : `Save to My Ideas (${savedIdeasCount}/${entitlements.saveCap})`}
                       </button>
                       {saveStatus === "error" && saveError && (
                         <p style={{ fontSize: 12, color: "#f87171", textAlign: "center", marginTop: 8 }}>
@@ -5021,46 +5133,64 @@ export default function Home() {
                 {/* Branch ideas get "See what changed" button leading to delta screen */}
                 {isBranchIdea ? (
                   <>
-                    <button
-                      onClick={startReEvaluation}
-                      disabled={evalsRemaining <= 0}
-                      style={{
-                        width: "100%",
-                        padding: "14px 0",
+                    {entitlements.canUseWorkflow ? (
+                      <>
+                        <button
+                          onClick={startReEvaluation}
+                          disabled={evalsRemaining <= 0}
+                          style={{
+                            width: "100%",
+                            padding: "14px 0",
+                            borderRadius: 12,
+                            fontSize: 14,
+                            fontWeight: 600,
+                            border: "none",
+                            cursor: evalsRemaining <= 0 ? "not-allowed" : "pointer",
+                            background: evalsRemaining <= 0 ? "rgba(38,38,38,0.6)" : "rgba(108,99,255,0.12)",
+                            color: evalsRemaining <= 0 ? "#525252" : "#a78bfa",
+                            marginBottom: 10,
+                          }}
+                        >
+                          {evalsRemaining <= 0 ? "No evaluations remaining" : "Evolve this idea"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCurrentScreen("delta");
+                            if (!deltaData && !deltaLoading) {
+                              fetchDelta(currentIdeaId);
+                            }
+                          }}
+                          style={{
+                            width: "100%",
+                            padding: "14px 0",
+                            borderRadius: 12,
+                            fontSize: 14,
+                            fontWeight: 600,
+                            border: "none",
+                            cursor: "pointer",
+                            background: "rgba(139,92,246,0.15)",
+                            color: "#a78bfa",
+                            marginBottom: 10,
+                          }}
+                        >
+                          See what changed →
+                        </button>
+                      </>
+                    ) : (
+                      <div style={{
+                        padding: "16px 20px",
                         borderRadius: 12,
-                        fontSize: 14,
-                        fontWeight: 600,
-                        border: "none",
-                        cursor: evalsRemaining <= 0 ? "not-allowed" : "pointer",
-                        background: evalsRemaining <= 0 ? "rgba(38,38,38,0.6)" : "rgba(108,99,255,0.12)",
-                        color: evalsRemaining <= 0 ? "#525252" : "#a78bfa",
+                        border: "1px solid rgba(108,99,255,0.2)",
+                        background: "rgba(108,99,255,0.04)",
                         marginBottom: 10,
-                      }}
-                    >
-                      {evalsRemaining <= 0 ? "No evaluations remaining" : "Evolve this idea"}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setCurrentScreen("delta");
-                        if (!deltaData && !deltaLoading) {
-                          fetchDelta(currentIdeaId);
-                        }
-                      }}
-                      style={{
-                        width: "100%",
-                        padding: "14px 0",
-                        borderRadius: 12,
-                        fontSize: 14,
-                        fontWeight: 600,
-                        border: "none",
-                        cursor: "pointer",
-                        background: "rgba(139,92,246,0.15)",
-                        color: "#a78bfa",
-                        marginBottom: 10,
-                      }}
-                    >
-                      See what changed →
-                    </button>
+                        textAlign: "center",
+                      }}>
+                        <p style={{ fontSize: 13, color: "#a78bfa", margin: "0 0 4px", fontWeight: 600 }}>Workspace feature</p>
+                        <p style={{ fontSize: 12, color: "#737373", margin: 0 }}>
+                          Subscribe to evolve ideas, see what changed, compare, and track lineage.
+                        </p>
+                      </div>
+                    )}
                     <button
                       onClick={() => {
                         setViewingFromSaved(false);
@@ -5090,60 +5220,78 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    <button
-                      onClick={startReEvaluation}
-                      disabled={evalsRemaining <= 0}
-                      style={{
-                        width: "100%",
-                        padding: "14px 0",
-                        borderRadius: 12,
-                        fontSize: 14,
-                        fontWeight: 600,
-                        border: "none",
-                        cursor: evalsRemaining <= 0 ? "not-allowed" : "pointer",
-                        background: evalsRemaining <= 0 ? "rgba(38,38,38,0.6)" : "rgba(108,99,255,0.12)",
-                        color: evalsRemaining <= 0 ? "#525252" : "#a78bfa",
-                        marginBottom: 10,
-                      }}
-                    >
-                      {evalsRemaining <= 0 ? "No evaluations remaining" : "Evolve this idea"}
-                    </button>
-                    {/* Set as main version — only for branches that aren't already main */}
-                    {currentIdeaId && (() => {
-                      const currentIdea = myIdeas.find(i => i.id === currentIdeaId);
-                      if (!currentIdea?.parent_idea_id || currentIdea?.is_main_version) return null;
-                      return (
+                    {entitlements.canUseWorkflow ? (
+                      <>
                         <button
-                          onClick={async () => {
-                            try {
-                              const { data: { session } } = await supabase.auth.getSession();
-                              if (!session) return;
-                              await fetch(`/api/ideas/${currentIdeaId}/set-main`, {
-                                method: "PATCH",
-                                headers: { Authorization: `Bearer ${session.access_token}` },
-                              });
-                              fetchMyIdeas();
-                            } catch (e) {
-                              console.error("Set-main failed:", e);
-                            }
-                          }}
+                          onClick={startReEvaluation}
+                          disabled={evalsRemaining <= 0}
                           style={{
                             width: "100%",
-                            padding: "12px 0",
+                            padding: "14px 0",
                             borderRadius: 12,
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: 600,
-                            border: "1px solid rgba(16,185,129,0.3)",
-                            background: "rgba(16,185,129,0.06)",
-                            color: "#34d399",
-                            cursor: "pointer",
+                            border: "none",
+                            cursor: evalsRemaining <= 0 ? "not-allowed" : "pointer",
+                            background: evalsRemaining <= 0 ? "rgba(38,38,38,0.6)" : "rgba(108,99,255,0.12)",
+                            color: evalsRemaining <= 0 ? "#525252" : "#a78bfa",
                             marginBottom: 10,
                           }}
                         >
-                          ★ Set as main version
+                          {evalsRemaining <= 0 ? "No evaluations remaining" : "Evolve this idea"}
                         </button>
-                      );
-                    })()}
+                        {/* Set as main version — only for branches that aren't already main */}
+                        {currentIdeaId && (() => {
+                          const currentIdea = myIdeas.find(i => i.id === currentIdeaId);
+                          if (!currentIdea?.parent_idea_id || currentIdea?.is_main_version) return null;
+                          return (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const { data: { session } } = await supabase.auth.getSession();
+                                  if (!session) return;
+                                  await fetch(`/api/ideas/${currentIdeaId}/set-main`, {
+                                    method: "PATCH",
+                                    headers: { Authorization: `Bearer ${session.access_token}` },
+                                  });
+                                  fetchMyIdeas();
+                                } catch (e) {
+                                  console.error("Set-main failed:", e);
+                                }
+                              }}
+                              style={{
+                                width: "100%",
+                                padding: "12px 0",
+                                borderRadius: 12,
+                                fontSize: 13,
+                                fontWeight: 600,
+                                border: "1px solid rgba(16,185,129,0.3)",
+                                background: "rgba(16,185,129,0.06)",
+                                color: "#34d399",
+                                cursor: "pointer",
+                                marginBottom: 10,
+                              }}
+                            >
+                              ★ Set as main version
+                            </button>
+                          );
+                        })()}
+                      </>
+                    ) : (
+                      <div style={{
+                        padding: "16px 20px",
+                        borderRadius: 12,
+                        border: "1px solid rgba(108,99,255,0.2)",
+                        background: "rgba(108,99,255,0.04)",
+                        marginBottom: 10,
+                        textAlign: "center",
+                      }}>
+                        <p style={{ fontSize: 13, color: "#a78bfa", margin: "0 0 4px", fontWeight: 600 }}>Workspace feature</p>
+                        <p style={{ fontSize: 12, color: "#737373", margin: 0 }}>
+                          Subscribe to evolve ideas, compare versions, and track your decision lineage.
+                        </p>
+                      </div>
+                    )}
                     <button
                       onClick={() => {
                         setViewingFromSaved(false);
@@ -5225,6 +5373,13 @@ export default function Home() {
   // ============================================
   // SCREEN: DELTA EXPLANATION (branches only)
   // ============================================
+  // STATE-LEVEL GUARD: Delta screen is a workflow feature (subscribers only)
+  if (currentScreen === "delta" && !entitlements.canUseWorkflow) {
+    // Redirect non-subscribers away from workflow screens
+    setCurrentScreen("results2");
+    return null;
+  }
+
   if (currentScreen === "delta" && viewingFromSaved && isBranchIdea) {
     const currentIdea = myIdeas.find(i => i.id === currentIdeaId);
     const parentIdea = currentIdea ? myIdeas.find(i => i.id === currentIdea.parent_idea_id) : null;
