@@ -101,6 +101,7 @@ export default function EvaluationView({
 
   // Content gating — true for free preview users viewing unpaid evaluations
   const isGated = !entitlements.canSeeFullContent;
+  const isPreviewUser = entitlements.isPreviewUser;
 
   // ==========================================
   // SCREEN: ANALYSIS (results1)
@@ -174,7 +175,7 @@ export default function EvaluationView({
           <PageContainer wide>
 
             {/* Free Preview Banner */}
-            {isGated && <PreviewBanner t={t} />}
+            {isPreviewUser && <PreviewBanner t={t} evalsRemaining={evalsRemaining} />}
 
             {/* Scope Warning */}
             {analysis.scope_warning && (
@@ -791,7 +792,7 @@ export default function EvaluationView({
           <PageContainer wide>
 
             {/* Free Preview Banner */}
-            {isGated && <PreviewBanner t={t} />}
+            {isPreviewUser && <PreviewBanner t={t} evalsRemaining={evalsRemaining} />}
 
             {/* Failure Risks */}
             {analysis.evaluation.failure_risks && analysis.evaluation.failure_risks.length > 0 && (
@@ -1315,29 +1316,28 @@ export default function EvaluationView({
 
             {/* Save / Decision block — shown after user has seen everything */}
             {!viewingFromSaved && (
-              isGated ? (
-                /* GATED — show unlock prompt instead of save */
+              isPreviewUser ? (
+                /* FREE PREVIEW — nudge toward credits, not content unlock */
                 <Card style={{ padding: 28, textAlign: "center" }} t={t}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: t.text, margin: "0 0 6px 0" }}>
-                    Want the full picture?
+                    Want to evaluate more ideas?
                   </p>
                   <p style={{ fontSize: 13, color: t.sec, margin: "0 0 20px 0", lineHeight: 1.5 }}>
-                    Unlock all metric explanations, phase details, and execution guidance for this evaluation.
+                    {evalsRemaining > 0
+                      ? `You have ${evalsRemaining} free evaluation${evalsRemaining !== 1 ? "s" : ""} remaining. Buy credits to keep evaluating after that.`
+                      : "You've used your free evaluations. Buy credits to keep going."}
                   </p>
                   <button style={{
-                    background: t.lockBg,
-                    color: "#fff",
+                    background: t.ctaBg,
+                    color: t.ctaText,
                     border: "none",
                     borderRadius: 10,
                     padding: "12px 32px",
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
                   }}>
-                    <span>🔒</span> Unlock Full Report
+                    Get Credits
                   </button>
                 </Card>
               ) : (

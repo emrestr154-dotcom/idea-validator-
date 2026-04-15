@@ -652,14 +652,14 @@ export function BlurGate({ isGated, text, t }) {
   );
 }
 
-// Preview banner — shown at top of gated evaluation screens
-export function PreviewBanner({ t }) {
+// Preview banner — informational, shown at top of free preview evaluation screens
+export function PreviewBanner({ t, evalsRemaining }) {
   return (
     <div style={{
       background: t.surface,
       border: `1px solid ${t.border}`,
       borderRadius: 12,
-      padding: "14px 20px",
+      padding: "12px 20px",
       marginBottom: 24,
       display: "flex",
       alignItems: "center",
@@ -668,24 +668,15 @@ export function PreviewBanner({ t }) {
       flexWrap: "wrap",
     }}>
       <p style={{ fontSize: 13, color: t.sec, margin: 0 }}>
-        <span style={{ fontWeight: 600, color: t.text }}>Free Preview</span> — some sections are condensed.
+        <span style={{ fontWeight: 600, color: t.text }}>Free Preview</span> — {evalsRemaining != null ? `${evalsRemaining} of 2 evaluations remaining` : "limited evaluations"}
       </p>
-      <button style={{
-        background: t.lockBg,
-        color: "#fff",
-        border: "none",
-        borderRadius: 8,
-        padding: "8px 18px",
+      <span style={{
         fontSize: 11,
-        fontWeight: 600,
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        whiteSpace: "nowrap",
+        fontWeight: 500,
+        color: t.mut,
       }}>
-        🔒 Unlock Full Report
-      </button>
+        Get more with credits →
+      </span>
     </div>
   );
 }

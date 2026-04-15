@@ -177,7 +177,7 @@ export default function Home() {
     return {
       themeMode: isSubscriber ? "dark" : "light",
       canUseWorkflow: isSubscriber,
-      canSeeFullContent: isPAYG || isSubscriber, // PAYG paid for it, subscribers always see full
+      canSeeFullContent: true, // All users see full evaluation content — quantity (2 lifetime evals) is the gate, not content visibility
       saveCap: isSubscriber ? Infinity : 5,
       isPreviewUser: isPreview,
       isPAYG,
