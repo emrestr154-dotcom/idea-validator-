@@ -19,7 +19,7 @@ function getScoreBg(s) {
 const STATUS_CONFIG = {
   exploring: { label: "Exploring", color: "#60a5fa", bg: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.25)" },
   lead:      { label: "Lead",      color: "#34d399", bg: "rgba(16,185,129,0.12)", border: "rgba(16,185,129,0.25)" },
-  parked:    { label: "Parked",    color: t.sec, bg: "rgba(115,115,115,0.12)", border: "rgba(115,115,115,0.25)" },
+  parked:    { label: "Parked",    color: "#a3a3a3", bg: "rgba(115,115,115,0.12)", border: "rgba(115,115,115,0.25)" },
   killed:    { label: "Killed",    color: "#f87171", bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.25)" },
 };
 const STATUS_OPTIONS = ["exploring", "lead", "parked", "killed"];
