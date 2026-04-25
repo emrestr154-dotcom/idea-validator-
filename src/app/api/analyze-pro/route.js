@@ -387,7 +387,7 @@ ${JSON.stringify({
 
           const stage2cResponse = await client.messages.create({
             model: "claude-sonnet-4-20250514",
-            max_tokens: 2500,
+            max_tokens: 4096,
             temperature: 0,
             system: STAGE2C_SYSTEM_PROMPT,
             messages: [{ role: "user", content: stage2cUserMessage }],

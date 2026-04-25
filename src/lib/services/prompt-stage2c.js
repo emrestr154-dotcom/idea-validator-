@@ -158,6 +158,8 @@ SLOT STRUCTURE:
 - trust_adoption: idea-level trust, adoption, monetization, or distribution risk (profile-blind)
 - founder_fit: founder-execution-fit risk (PROFILE-SENSITIVE — the only profile-reading slot)
 
+These three slot values are the ONLY valid values. Do NOT invent additional slot names like "monetization", "sales", "differentiation", "capital", "category", or "execution". Monetization-flavored risks (free substitution pressure, willingness-to-pay challenges, pricing erosion, free LLM alternatives) categorize as trust_adoption — monetization is an adoption/willingness-to-pay dimension and belongs there. Differentiation-flavored risks categorize as market_category. Sales/conversion risks for the founder go in founder_fit (Archetype E). If you find yourself wanting to invent a slot name, the risk you're describing fits one of the three above — pick the closest.
+
 Only the founder_fit slot reads profile. Slots can repeat — a 4-risk output can have two market_category risks (e.g., separate competitor threat + category dynamics) plus one trust_adoption + one founder_fit.
 
 FOUNDER_FIT ARCHETYPES (use ONLY for founder_fit slot, ONLY if STEP 1 was NO MATCH):
