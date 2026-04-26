@@ -4,12 +4,12 @@
 // Paid-tier chained pipeline: Stage 2b
 // Purpose: Score MD, MO, OR using evidence packets from Stage 2a
 // Input: Idea + profile + three metric-bounded evidence packets (from Stage 2a)
-// Output: three evaluation scores + confidence_level
+// Output: three evaluation scores + evidence_strength
 //
 // V4S28 S1+S2 CHANGE: summary and failure_risks have moved to Stage 2c.
-// Stage 2b's job narrows to scoring + confidence only. The summary tone
+// Stage 2b's job narrows to scoring + evidence strength only. The summary tone
 // calibration, anti-patterns, and what-to-do-instead blocks moved with the
-// summary to Stage 2c. Stage 2c reads scores + confidence_level from this
+// summary to Stage 2c. Stage 2c reads scores + evidence_strength from this
 // stage's output and synthesizes summary + failure_risks against profile +
 // Stage 1 + Stage 2a packets.
 //
@@ -150,6 +150,33 @@ To score above 6.0, the explanation MUST identify exactly why incumbent replicat
 
 After scoring, cross-check: If differentiation relies on framing, positioning, workflow design, or combining existing capabilities, cap at 5.0-6.0.
 
+OR EXPLANATION REQUIRED STRUCTURE: Every OR explanation must include two elements:
+1. The rubric-level justification (which band the score maps to and why).
+2. A defensibility-improvement suggestion: one sentence identifying the single most realistic change that would make this idea more defensible against incumbent replication.
+
+Good example: "Score 4.5, rubric level 3-4 — workflow differentiation is replicable by competitors like Clio adding a similar feature. Building a structured dataset of legal contract patterns across 10,000+ matters would create a moat competitors couldn't replicate without 12+ months of data collection."
+
+Bad example (descriptive-only ending): "Score 4.5, rubric level 3-4 — workflow differentiation is replicable by competitors like Clio adding a similar feature."
+
+The defensibility-improvement suggestion must be:
+- Specific (named data source, named capability, named integration — not generic directions).
+- Realistic (not "invent a new technology").
+- Tied to THIS idea's structural situation.
+
+ANTI-GENERIC GUARDRAIL: Do NOT suggest proprietary data, network effects, or deep integrations unless a specific plausible source/path is identifiable from THIS idea's context. Generic advice like "build proprietary data" or "create network effects" without a named, realistic path is forbidden.
+
+Examples of compliant specific suggestions:
+- "Building a structured dataset of legal contract patterns across 10,000+ matters" (specific data source tied to the idea).
+- "Tight integration with specific EHR workflows that would require incumbent product redesign to match" (specific integration tied to the domain).
+- "Two-sided liquidity between hospital procurement officers and vetted vendors" (specific network effect tied to the marketplace type).
+
+Examples of forbidden generic suggestions:
+- "Consider building proprietary data" (no named source).
+- "Create network effects" (no named two-sided mechanism).
+- "Deepen integrations" (no named integration).
+
+HONEST EXIT CLAUSE: If you cannot identify a realistic defensibility-improvement path for this idea, state that explicitly: "No realistic defensibility path exists against incumbents with this approach." Do NOT fabricate a generic improvement suggestion.
+
 === OVERALL SCORE ===
 Do NOT calculate or include an overall_score field. The application calculates it.
 
@@ -165,12 +192,32 @@ If the idea is a marketplace/platform depending on network effects, set marketpl
 6. SCORE-EXPLANATION CONSISTENCY (BOTH DIRECTIONS): After writing each explanation, verify the score matches what you described. A score above 6.0 with an explanation describing significant barriers is a contradiction — lower the score. Equally, a score below 5.0 with an explanation describing genuine buyer urgency, real wedge, manageable competition, or clear willingness to pay is also a contradiction — raise the score. Scores must reflect the balance of evidence, not default to pessimism or optimism.
 7. MD-OR INDEPENDENCE CHECK: After scoring both Market Demand and Originality, verify they are driven by different evidence. MD should be driven by buyer urgency, adoption friction, and need recurrence from the MD packet. OR should be driven by replication difficulty and competitor overlap from the OR packet. If both scores are above 6.0, verify each explanation cites different causal facts. If both explanations rely on the same underlying signal (e.g., "underserved market segment" boosting MD and "gap in competitor offerings" boosting OR), these are the same observation — lower the metric where the signal is weaker. An unserved market gap is primarily an MD fact (demand exists). It is only an OR fact if the gap exists because replication is genuinely hard — not merely because no one has built it yet.
 
-=== CONFIDENCE LEVEL ===
-HIGH: Well-understood market with clear comparables and strong evidence across packets.
-MEDIUM: Some market signal but significant uncertainty in at least one dimension. Most ideas should be MEDIUM.
-LOW: Unproven market with no close comparables. Scores are best-effort estimates.
+=== EVIDENCE STRENGTH ===
+This field evaluates three things combined: evidence sufficiency, market legibility, and input specificity. It is NOT a claim about the system's authority over whether the idea will succeed.
 
-Provide a one-sentence reason. Be specific — name the source of uncertainty.
+- HIGH — strong competitor/domain evidence base, well-defined product, clear market category.
+- MEDIUM — evidence base exists but has a specific concrete gap (buyer urgency under-evidenced, replication barrier unclear, adoption mechanism unproven, input scope leaves pricing ambiguous, etc.).
+- LOW — input is too thin, contradictory, or non-specific to ground a meaningful evaluation.
+
+Do NOT produce reasoning that reads as confidence ABOUT the idea ("this idea will likely succeed/fail" / "the evaluation is reliable"). The field reports how well-grounded the evaluation can be, not an authority claim about outcomes.
+
+MEDIUM REASON REQUIREMENT: If you set evidence_strength to MEDIUM, the reason must identify a specific, concrete gap in the evidence base that affects the evaluation.
+
+Valid MEDIUM reasons (specific concrete gaps):
+- "Buyer urgency is under-evidenced — no signal of whether dental practices prioritize this pain point"
+- "Replication barrier is unclear because incumbent behavior varies across competitors"
+- "Input scope leaves pricing model ambiguous between per-seat and per-usage"
+- "Adoption mechanism is unproven — no data on whether clinicians trust AI in this workflow"
+
+Invalid MEDIUM reasons (generic hedging):
+- "Clear market with some uncertainty"
+- "Reasonably established category"
+- "Some aspects could be stronger"
+- "Generally well-understood but not fully certain"
+
+If the evidence base is solid and no specific gap requires flagging, use HIGH. If the input is too thin or contradictory to produce a meaningful evaluation, use LOW. MEDIUM is reserved for the specific case where a concrete gap warrants user attention.
+
+Provide a one-sentence reason. Be specific.
 
 === EXPLANATION QUALITY ===
 Write explanations that are specific, causally clear, and proportionate to the evidence in each packet. Avoid overstated conclusions or judgments stronger than the data supports. Every claim in an explanation should be traceable to a fact in the corresponding evidence packet or the idea description.
@@ -179,9 +226,9 @@ Write explanations that are specific, causally clear, and proportionate to the e
 
 {
   "evaluation": {
-    "confidence_level": {
+    "evidence_strength": {
       "level": "HIGH | MEDIUM | LOW",
-      "reason": "One sentence explaining what drives the confidence level"
+      "reason": "One sentence explaining what drives the evidence strength assessment"
     },
     "market_demand": {
       "score": 6.5,

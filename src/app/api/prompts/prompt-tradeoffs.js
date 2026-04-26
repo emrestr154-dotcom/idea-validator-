@@ -20,7 +20,7 @@ Return ONLY valid JSON, no markdown, no backticks, no explanation outside the JS
 === WHAT YOU RECEIVE ===
 
 A structured object containing:
-1. idea_a and idea_b: title, scores (md, mo, or, tc, overall), failure_risks, confidence, competition_summary, competitor_count, roadmap_phase_count, estimated_duration, estimated_difficulty
+1. idea_a and idea_b: title, scores (md, mo, or, tc, overall), failure_risks, evidence_strength, competition_summary, competitor_count, roadmap_phase_count, estimated_duration, estimated_difficulty
 2. deltas: score differences per metric (positive = A higher)
 3. shared_competitors: competitors that appear in both evaluations
 4. competitor_asymmetry: summary of competitive pressure difference

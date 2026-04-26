@@ -20,7 +20,7 @@ import { calculateOverallScore } from "../../../lib/services/scoring";
 // V4S28 S1+S2+S3 (Bundle B1):
 // Stage 2c (NEW) sits between Stage 2b and Stage 3, sequential. It synthesizes
 // summary + failure_risks from idea + profile + Stage 1 output + Stage 2a
-// packets + Stage 2b scores + confidence_level. Stage 2b no longer outputs
+// packets + Stage 2b scores + evidence_strength. Stage 2b no longer outputs
 // summary or failure_risks — those moved to Stage 2c. Stage 3 reads
 // failure_risks from the merged evaluation object (mutated in-place after
 // Stage 2c completes), preserving Roadmap's risk-mitigation behavior.
@@ -354,7 +354,7 @@ ${JSON.stringify(stage2aResult)}`;
           // ============================
           // STAGE 2c: SYNTHESIS
           // Generate summary + failure_risks from idea + profile + Stage 1 +
-          // Stage 2a packets + Stage 2b scores + confidence_level.
+          // Stage 2a packets + Stage 2b scores + evidence_strength.
           //
           // V4S28 S1+S2+S3 architectural change: summary + failure_risks moved
           // out of Stage 2b to prevent profile-aware Risk 3 contaminating the
@@ -375,13 +375,13 @@ ${JSON.stringify(stage1Result)}
 === STAGE 2a EVIDENCE PACKETS ===
 ${JSON.stringify(stage2aResult)}
 
-=== STAGE 2b SCORES + CONFIDENCE ===
+=== STAGE 2b SCORES + EVIDENCE STRENGTH ===
 ${JSON.stringify({
             market_demand: ev.market_demand,
             monetization: ev.monetization,
             originality: ev.originality,
             technical_complexity: ev.technical_complexity,
-            confidence_level: ev.confidence_level,
+            evidence_strength: ev.evidence_strength,
             marketplace_note: ev.marketplace_note,
           })}`;
 

@@ -140,7 +140,7 @@ export async function POST(request) {
           technical_complexity: eval_.technical_complexity,
           marketplace_note: eval_.marketplace_note || null,
           failure_risks: eval_.failure_risks || [],
-          confidence_level: eval_.confidence_level || null,
+          evidence_strength: eval_.evidence_strength || null,
         },
         roadmap_json: analysis.phases || [],
         tools_json: analysis.tools || [],

@@ -561,28 +561,24 @@ export default function EvaluationView({
                 </div>
               )}
 
-              {/* Confidence Level */}
-              {analysis.evaluation.confidence_level && (
+              {/* Evidence Strength — hidden when HIGH (asymmetric display rule, V4S28 B4) */}
+              {analysis.evaluation.evidence_strength && analysis.evaluation.evidence_strength.level !== "HIGH" && (
                 <div style={{
                   marginBottom: 16,
                   padding: "12px 16px",
                   borderRadius: 12,
-                  background: analysis.evaluation.confidence_level.level === "HIGH"
-                    ? "rgba(16,185,129,0.06)"
-                    : analysis.evaluation.confidence_level.level === "LOW"
+                  background: analysis.evaluation.evidence_strength.level === "LOW"
                     ? "rgba(239,68,68,0.06)"
                     : "rgba(245,158,11,0.06)",
                   border: `1px solid ${
-                    analysis.evaluation.confidence_level.level === "HIGH"
-                      ? "rgba(16,185,129,0.2)"
-                      : analysis.evaluation.confidence_level.level === "LOW"
+                    analysis.evaluation.evidence_strength.level === "LOW"
                       ? "rgba(239,68,68,0.2)"
                       : "rgba(245,158,11,0.2)"
                   }`,
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, color: t.sec, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                      Evaluation Confidence
+                      Evidence Strength
                     </span>
                     <span style={{
                       fontSize: 11,
@@ -591,22 +587,18 @@ export default function EvaluationView({
                       borderRadius: 6,
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
-                      background: analysis.evaluation.confidence_level.level === "HIGH"
-                        ? "rgba(16,185,129,0.15)"
-                        : analysis.evaluation.confidence_level.level === "LOW"
+                      background: analysis.evaluation.evidence_strength.level === "LOW"
                         ? "rgba(239,68,68,0.15)"
                         : "rgba(245,158,11,0.15)",
-                      color: analysis.evaluation.confidence_level.level === "HIGH"
-                        ? "#34d399"
-                        : analysis.evaluation.confidence_level.level === "LOW"
+                      color: analysis.evaluation.evidence_strength.level === "LOW"
                         ? "#f87171"
                         : "#fbbf24",
                     }}>
-                      {analysis.evaluation.confidence_level.level}
+                      {analysis.evaluation.evidence_strength.level}
                     </span>
                   </div>
                   <span style={{ fontSize: 13, color: t.sec, lineHeight: 1.5 }}>
-                    {analysis.evaluation.confidence_level.reason}
+                    {analysis.evaluation.evidence_strength.reason}
                   </span>
                 </div>
               )}

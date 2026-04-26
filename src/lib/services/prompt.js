@@ -74,7 +74,7 @@ Do NOT gate this detection on whether the user explicitly mentions regulation. I
 If the user's idea description contains fewer than 20 meaningful words (excluding filler like "I want to build" or "an app that"):
 - Do NOT infer a specific product, target market, feature set, or business model that the user did not describe.
 - Score based on what is stated plus whatever the competition search returned. Do not fill gaps with assumptions.
-- Set confidence_level to LOW with a reason naming the specific missing information.
+- Set evidence_strength to LOW with a reason naming the specific missing information.
 - In each metric explanation, name what the user did NOT specify rather than silently assuming it. Example: "The description does not identify a specific buyer or adoption trigger, limiting demand assessment" — not "pet owners represent a large market."
 - Prefer conservative scores. A thin description should not score above 5.0 on any metric unless competition search returned strong specific evidence.
 - failure_risks under LOW: anchor on input-specification gaps, not fabricated failure modes. Drop the founder_fit slot (archetype detection requires specified product context). Output 2 risks total using market_category and/or trust_adoption slots, with text in each anchored on the specific specification gap. Do NOT generate domain-specific failure modes (clinical trust barriers, legal compliance concerns, financial regulation risk, etc.) unless the user's input explicitly named the domain.
@@ -155,7 +155,32 @@ Score levels:
 7-8: Strong differentiation. Different mechanism, different defensibility, or different user base in a way that creates real competitive advantage. Hard for incumbents to copy without significant changes.
 9-10: Genuinely novel approach. New category, new mechanism, or substantial unfair advantage that incumbents cannot easily replicate. Extremely rare.
 
-After scoring, identify the single most realistic defensibility improvement that would strengthen originality for THIS idea. Add this as one sentence at the end of the explanation. Be specific. "Build proprietary dataset of X from Y sources" not "find ways to differentiate."
+OR EXPLANATION REQUIRED STRUCTURE: Every OR explanation must include two elements:
+1. The rubric-level justification (which band the score maps to and why).
+2. A defensibility-improvement suggestion: one sentence identifying the single most realistic change that would make this idea more defensible against incumbent replication.
+
+Good example: "Score 4.5, rubric level 3-4 — workflow differentiation is replicable by competitors like Clio adding a similar feature. Building a structured dataset of legal contract patterns across 10,000+ matters would create a moat competitors couldn't replicate without 12+ months of data collection."
+
+Bad example (descriptive-only ending): "Score 4.5, rubric level 3-4 — workflow differentiation is replicable by competitors like Clio adding a similar feature."
+
+The defensibility-improvement suggestion must be:
+- Specific (named data source, named capability, named integration — not generic directions).
+- Realistic (not "invent a new technology").
+- Tied to THIS idea's structural situation.
+
+ANTI-GENERIC GUARDRAIL: Do NOT suggest proprietary data, network effects, or deep integrations unless a specific plausible source/path is identifiable from THIS idea's context. Generic advice like "build proprietary data" or "create network effects" without a named, realistic path is forbidden.
+
+Examples of compliant specific suggestions:
+- "Building a structured dataset of legal contract patterns across 10,000+ matters" (specific data source tied to the idea).
+- "Tight integration with specific EHR workflows that would require incumbent product redesign to match" (specific integration tied to the domain).
+- "Two-sided liquidity between hospital procurement officers and vetted vendors" (specific network effect tied to the marketplace type).
+
+Examples of forbidden generic suggestions:
+- "Consider building proprietary data" (no named source).
+- "Create network effects" (no named two-sided mechanism).
+- "Deepen integrations" (no named integration).
+
+HONEST EXIT CLAUSE: If you cannot identify a realistic defensibility-improvement path for this idea, state that explicitly: "No realistic defensibility path exists against incumbents with this approach." Do NOT fabricate a generic improvement suggestion.
 
 METRIC 4: TECHNICAL COMPLEXITY (Weight: 20%, INVERTED)
 This is the ONLY metric that uses user profile. Evaluate how hard this idea is to BUILD for THIS specific user.
@@ -196,14 +221,32 @@ If the idea is a marketplace/platform depending on network effects, set marketpl
 7. SCORE-EXPLANATION CONSISTENCY: After writing each metric's explanation, re-read it and verify the numerical score matches the risks and barriers described. If the explanation mentions major friction (slow procurement, trust barriers, strong free substitutes, low usage frequency, crowded incumbents, regulatory burden), the score MUST reflect those concerns. A score above 6.0 with an explanation describing significant barriers is a contradiction — resolve it by lowering the score.
 8. USER-STATED CLAIMS ARE NOT EVIDENCE. If the user includes statistics (TAM, market size, conversion rates), pricing assumptions, or assertions about buyer willingness ("every person I talked to would pay"), treat these as CLAIMS, not verified evidence. Do not cite user-claimed numbers as reasons for higher scores. Only competition data, identified competitors, and observable market signals count as evidence. Note user claims in the explanation but do not let them drive the score upward.
 
-=== CONFIDENCE LEVEL ===
-After scoring all four metrics, assess your overall confidence in this evaluation.
+=== EVIDENCE STRENGTH ===
+This field evaluates three things combined: evidence sufficiency, market legibility, and input specificity. It is NOT a claim about the system's authority over whether the idea will succeed.
 
-HIGH: The idea targets a well-understood market with clear comparables, established buyer behavior, and strong evidence from competitor data. Scores are grounded in verifiable signals.
-MEDIUM: The idea has some market signal but significant uncertainty in at least one dimension — emerging market, indirect competitor data, unclear buyer behavior, or the idea sits between established categories. Most ideas should be MEDIUM.
-LOW: The idea targets an unproven market with no close comparables, requires untested behavior change, or operates in a domain with very limited market data. Scores are best-effort estimates with high uncertainty.
+- HIGH — strong competitor/domain evidence base, well-defined product, clear market category.
+- MEDIUM — evidence base exists but has a specific concrete gap (buyer urgency under-evidenced, replication barrier unclear, adoption mechanism unproven, input scope leaves pricing ambiguous, etc.).
+- LOW — input is too thin, contradictory, or non-specific to ground a meaningful evaluation.
 
-Provide a one-sentence reason explaining what drives the confidence level. Be specific — name the source of uncertainty, not just "this is uncertain."
+Do NOT produce reasoning that reads as confidence ABOUT the idea ("this idea will likely succeed/fail" / "the evaluation is reliable"). The field reports how well-grounded the evaluation can be, not an authority claim about outcomes.
+
+MEDIUM REASON REQUIREMENT: If you set evidence_strength to MEDIUM, the reason must identify a specific, concrete gap in the evidence base that affects the evaluation.
+
+Valid MEDIUM reasons (specific concrete gaps):
+- "Buyer urgency is under-evidenced — no signal of whether dental practices prioritize this pain point"
+- "Replication barrier is unclear because incumbent behavior varies across competitors"
+- "Input scope leaves pricing model ambiguous between per-seat and per-usage"
+- "Adoption mechanism is unproven — no data on whether clinicians trust AI in this workflow"
+
+Invalid MEDIUM reasons (generic hedging):
+- "Clear market with some uncertainty"
+- "Reasonably established category"
+- "Some aspects could be stronger"
+- "Generally well-understood but not fully certain"
+
+If the evidence base is solid and no specific gap requires flagging, use HIGH. If the input is too thin or contradictory to produce a meaningful evaluation, use LOW. MEDIUM is reserved for the specific case where a concrete gap warrants user attention.
+
+Provide a one-sentence reason. Be specific.
 
 === FAILURE RISKS ===
 Output 2 to 4 structured failure risks using a slot system. Each risk has a slot, an optional archetype, and prose text.
@@ -250,7 +293,7 @@ ENUM VALUES (pick exactly one, use the strings verbatim):
 5. "Distribution" — reaching users at scale is the dominant problem. Consumer apps depending on organic growth, network-effect products needing density, two-sided marketplaces requiring liquidity bootstrap.
 6. "Data acquisition" — idea depends on accumulating proprietary data, accessing licensed datasets, or generating user-contributed corpus before the product becomes useful.
 7. "Category maturation" — market or buyer behavior isn't yet ready. Emerging AI capabilities ahead of buyer comfort, bleeding-edge integrations without existing user habits, pre-PMF categories.
-8. "Specification" — user's input lacks sufficient specificity to identify a binding constraint. Use ONLY when confidence_level is "LOW" (sparse input). See sparse-input rule below.
+8. "Specification" — user's input lacks sufficient specificity to identify a binding constraint. Use ONLY when evidence_strength is "LOW" (sparse input). See sparse-input rule below.
 
 PRIORITY RULE (when multiple bottlenecks plausibly apply):
 - Compliance > Trust/credibility (compliance is a binary gate; trust is gradient).
@@ -329,16 +372,16 @@ Assign each phase a phase_type:
     }
   ],
   "estimates": {
-    "duration": "e.g. 4-6 months  (or \\"Cannot estimate until specific workflow is defined\\" under LOW confidence)",
-    "difficulty": "Easy | Moderate | Hard | Very Hard  (or \\"N/A\\" under LOW confidence)",
+    "duration": "e.g. 4-6 months  (or \\"Cannot estimate until specific workflow is defined\\" under LOW evidence strength)",
+    "difficulty": "Easy | Moderate | Hard | Very Hard  (or \\"N/A\\" under LOW evidence strength)",
     "main_bottleneck": "Technical build | Buyer access | Trust/credibility | Compliance | Distribution | Data acquisition | Category maturation | Specification",
     "main_bottleneck_explanation": "1 sentence. Why this enum value is the binding constraint for THIS idea + profile pair. Cross-references the founder gap or founder fit in natural prose (no section names).",
     "explanation": "1-2 sentences. Opens following the opening variety rule (foreground the bottleneck, not TC, unless main_bottleneck is Technical build and TC dominates). Closes with commitment-framing beat. References founder fit (or names founder-fit asset in the null case) in natural prose."
   },
   "evaluation": {
-    "confidence_level": {
+    "evidence_strength": {
       "level": "HIGH | MEDIUM | LOW",
-      "reason": "One sentence explaining what drives the confidence level"
+      "reason": "One sentence explaining what drives the evidence strength assessment"
     },
     "failure_risks": [
       {
@@ -404,8 +447,8 @@ MAIN BOTTLENECK CALIBRATION (apply on top of base):
 KEY CALIBRATION RULE — anti-collapse to TC:
 Do NOT reduce duration based on the founder's coding speed when coding is NOT the binding constraint. A senior engineer working on a Trust/credibility-bottlenecked idea does NOT ship faster than a beginner — both spend the same months on non-engineering work. Coding skill compresses Technical-build duration only.
 
-SPARSE INPUT (LOW confidence):
-When confidence_level is "LOW":
+SPARSE INPUT (LOW evidence strength):
+When evidence_strength is "LOW":
 - main_bottleneck = "Specification"
 - estimates.duration = "Cannot estimate until specific workflow is defined"
 - estimates.difficulty = "N/A"
@@ -436,10 +479,10 @@ Additional rules:
 - For social impact ideas, set monetization label to "Sustainability Potential".
 - archetype is always null in the free-tier output. The structured archetype classification (A-E) lives in the paid-tier pipeline.
 - If null case fires (founder_fit dropped because profile aligns with idea requirements), the failure_risks array contains only "market_category" and/or "trust_adoption" entries — do NOT include a founder_fit entry.
-- Under confidence_level === "LOW", the failure_risks array contains only "market_category" and/or "trust_adoption" entries (founder_fit dropped). Output 2 risks anchored on specification gaps.
+- Under evidence_strength === "LOW", the failure_risks array contains only "market_category" and/or "trust_adoption" entries (founder_fit dropped). Output 2 risks anchored on specification gaps.
 - main_bottleneck must be one of the 8 enum values verbatim. No invented values, no combined values.
 - main_bottleneck_explanation is 1 sentence. estimates.explanation is 1-2 sentences. Both must follow opening variety + closing beat rules and never include section-name references.
-- Under confidence_level === "LOW": main_bottleneck = "Specification", duration = "Cannot estimate until specific workflow is defined", difficulty = "N/A".
+- Under evidence_strength === "LOW": main_bottleneck = "Specification", duration = "Cannot estimate until specific workflow is defined", difficulty = "N/A".
 
 === SUMMARY TONE CALIBRATION (apply ONLY after all scores are locked) ===
 

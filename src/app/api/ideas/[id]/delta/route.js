@@ -45,10 +45,10 @@ function extractRisks(evaluation) {
   return sj.failure_risks || [];
 }
 
-// Helper: extract confidence from scoring_json
-function extractConfidence(evaluation) {
+// Helper: extract evidence_strength from scoring_json
+function extractEvidenceStrength(evaluation) {
   const sj = evaluation.scoring_json || {};
-  return sj.confidence_level || null;
+  return sj.evidence_strength || null;
 }
 
 // Helper: extract competitor names
@@ -189,7 +189,7 @@ export async function POST(request, { params }) {
         title: parentIdea?.title || "Parent idea",
         scores: parentScores,
         failure_risks: extractRisks(parentEval),
-        confidence: extractConfidence(parentEval),
+        evidence_strength: extractEvidenceStrength(parentEval),
         competitors: extractCompetitorNames(parentEval),
         competitor_count: (parentEval.competitors_json || []).length,
         competition_summary: parentEval.competition_summary || "",
@@ -201,7 +201,7 @@ export async function POST(request, { params }) {
         title: childIdea.title || "Branch idea",
         scores: childScores,
         failure_risks: extractRisks(childEval),
-        confidence: extractConfidence(childEval),
+        evidence_strength: extractEvidenceStrength(childEval),
         competitors: extractCompetitorNames(childEval),
         competitor_count: (childEval.competitors_json || []).length,
         competition_summary: childEval.competition_summary || "",

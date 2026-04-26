@@ -92,7 +92,7 @@ function prepareComparisonData(ideaA, ideaB) {
     summaries.tools = parts.join(". ") + ".";
   }
 
-  return { competitorsA, competitorsB, sharedNames, metrics, tradeoffs, overallA, overallB, overallSummary, nameA, nameB, risksA, risksB, phasesA, phasesB, toolsA, toolsB, estimatesA, estimatesB, confidenceA: a.evaluation.confidence_level, confidenceB: b.evaluation.confidence_level, summaries };
+  return { competitorsA, competitorsB, sharedNames, metrics, tradeoffs, overallA, overallB, overallSummary, nameA, nameB, risksA, risksB, phasesA, phasesB, toolsA, toolsB, estimatesA, estimatesB, evidenceStrengthA: a.evaluation.evidence_strength, evidenceStrengthB: b.evaluation.evidence_strength, summaries };
 }
 
 // ============================================
@@ -199,14 +199,14 @@ function ScoresScreen({ data, isMobile, activeTab, t }) {
     );
   };
   const renderOverall = (side) => {
-    const score = side === "a" ? data.overallA : data.overallB; const conf = side === "a" ? data.confidenceA : data.confidenceB;
+    const score = side === "a" ? data.overallA : data.overallB; const evStrength = side === "a" ? data.evidenceStrengthA : data.evidenceStrengthB;
     return (
       <div style={{ background: t.surfAlt, borderRadius: 12, padding: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 13, color: t.mut }}>Overall score</span>
           <span style={{ fontSize: 18, fontWeight: 700, fontFamily: "monospace", color: t.text }}>{score.toFixed(1)}</span>
         </div>
-        {conf && <p style={{ fontSize: 11, color: t.mut, margin: "4px 0 0 0" }}>Confidence: {conf.level}</p>}
+        {evStrength && evStrength.level !== "HIGH" && <p style={{ fontSize: 11, color: t.mut, margin: "4px 0 0 0" }}>Evidence Strength: {evStrength.level}</p>}
       </div>
     );
   };
@@ -676,7 +676,7 @@ function buildTradeoffsPayload(ideaA, ideaB, data) {
       title: ideaA.title,
       scores: aScores,
       failure_risks: risksA,
-      confidence: aE.confidence_level || null,
+      evidence_strength: aE.evidence_strength || null,
       competition_summary: extractCompSummary(ideaA.analysis),
       competitor_count: extractCompCount(ideaA.analysis),
       roadmap_phase_count: (ideaA.analysis.phases || []).length,
@@ -687,7 +687,7 @@ function buildTradeoffsPayload(ideaA, ideaB, data) {
       title: ideaB.title,
       scores: bScores,
       failure_risks: risksB,
-      confidence: bE.confidence_level || null,
+      evidence_strength: bE.evidence_strength || null,
       competition_summary: extractCompSummary(ideaB.analysis),
       competitor_count: extractCompCount(ideaB.analysis),
       roadmap_phase_count: (ideaB.analysis.phases || []).length,

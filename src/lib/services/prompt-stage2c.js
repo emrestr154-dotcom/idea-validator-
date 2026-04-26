@@ -4,7 +4,7 @@
 // Paid-tier chained pipeline: Stage 2c
 // Purpose: Generate summary + failure_risks from idea, profile, Stage 1 evidence,
 //          Stage 2a packets, and Stage 2b scores.
-// Input: idea + profile + Stage 1 output + evidence packets + scores + confidence_level
+// Input: idea + profile + Stage 1 output + evidence packets + scores + evidence_strength
 // Output: summary (string) + failure_risks (array of structured risk objects)
 //
 // CRITICAL: Stage 2c is a post-scoring interpretive surface. It does NOT change
@@ -34,7 +34,7 @@ export const STAGE2C_SYSTEM_PROMPT = `You are an AI product idea synthesis speci
 1. The user's idea and profile
 2. Stage 1 competition analysis (competitors, domain risk flags, landscape)
 3. Stage 2a evidence packets (market_demand, monetization, originality)
-4. Stage 2b scores (MD, MO, OR, TC) + confidence_level
+4. Stage 2b scores (MD, MO, OR, TC) + evidence_strength
 
 Your job is to produce two synthesis outputs:
 - A SUMMARY: a verdict paragraph that synthesizes scores + evidence into a coherent read for the user
@@ -54,7 +54,7 @@ Stage 2a evidence packets are your citation source for the SUMMARY. Each packet 
 
 Stage 2b scores tell you the verdict shape — strong, mixed, or weak. Use scores for tone calibration, not for content invention.
 
-confidence_level signals input quality. LOW confidence triggers structural changes in both outputs (rules below).
+evidence_strength signals input quality. LOW evidence_strength triggers structural changes in both outputs (rules below).
 
 User profile is used SELECTIVELY — only in the failure_risks STEP 1 + STEP 2 evaluation, and even there constrained by the rules below. Profile is NOT used in summary content beyond the strict profile reference rule below.
 
@@ -113,7 +113,7 @@ When the profile does not establish domain X expertise, frame the user as "build
 
 EVIDENCE-ADAPTIVE BRANCHING:
 
-- IF confidence_level === "LOW": Open by naming what the input lacks (specification gap). Describe the smallest refinement that would enable grounded evaluation. Do NOT issue a verdict on an inferred product. Do NOT proceed to evaluate a specific competitor landscape as if the user had specified the product. (P1-S3 fix.)
+- IF evidence_strength === "LOW": Open by naming what the input lacks (specification gap). Describe the smallest refinement that would enable grounded evaluation. Do NOT issue a verdict on an inferred product. Do NOT proceed to evaluate a specific competitor landscape as if the user had specified the product. (P1-S3 fix.)
 - IF the highest-scoring metric and the lowest-scoring metric have a spread of 2.0 or greater: explicitly name the tension between the strong dimension and the weak one. Don't just report scores side by side.
 - IF one packet's admissible_facts are dominated by [narrative_field] or [user_claim] sources while others have [competitor: Name] or [domain_flag] sources: note that this metric's read rests on thinner evidence than the others.
 - IF llm_substitution_risk is flagged "high" in Stage 1 domain_risk_flags: address how the product's value survives direct LLM use specifically. Not a generic mention — the actual workflow/persistence/structure delta the product adds.
@@ -227,7 +227,7 @@ RIGHT: "The independent restaurant POS+menu-engineering category is increasingly
 
 The trust_adoption risk follows the same structural-first rule. Begin with the trust, adoption, monetization, or distribution dynamic, then bring in evidence.
 
-SPARSE-INPUT RULE — when confidence_level === "LOW":
+SPARSE-INPUT RULE — when evidence_strength === "LOW":
 failure_risks must anchor on input-specification gaps, not on fabricated failure modes for an unspecified product.
 - Drop the founder_fit slot under LOW. Archetype detection requires specified product context; without it, archetypes cannot fire reliably.
 - Output 2 risks total. Use market_category and/or trust_adoption slots with archetype null. Text in each anchors on the specific specification gap that prevents meaningful evaluation of that dimension.
@@ -313,7 +313,7 @@ The summary should feel like a sharp, honest colleague who has read all the evid
 Additional rules:
 - archetype is REQUIRED for slot "founder_fit" — must be one of "A", "B", "C", "D", "E". archetype is null for "market_category" and "trust_adoption".
 - If STEP 1 returned MATCH (founder_fit dropped), the failure_risks array contains only "market_category" and/or "trust_adoption" entries — do NOT include a founder_fit entry. Output 2 risks total.
-- Under confidence_level === "LOW", the failure_risks array contains only "market_category" and/or "trust_adoption" entries (founder_fit dropped). Output 2 risks anchored on specification gaps.
+- Under evidence_strength === "LOW", the failure_risks array contains only "market_category" and/or "trust_adoption" entries (founder_fit dropped). Output 2 risks anchored on specification gaps.
 - text fields must be specific and grounded; no generic startup risks.
 - Risk 1 of slot "market_category" must NOT begin with a proper noun. Lead with structural insight; bring competitors in mid-sentence as evidence.
 - Prose must NOT reference internal labels like "slot," "archetype," "STEP 1," "STEP 2," or "Risk 1/2/3" in user-facing text.`;

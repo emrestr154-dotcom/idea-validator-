@@ -53,7 +53,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Missing analysis data." }, { status: 400 });
     }
 
-    // Build scoring_json with failure_risks and confidence_level included
+    // Build scoring_json with failure_risks and evidence_strength included
     const scoringJson = {
       market_demand: analysis.evaluation?.market_demand || null,
       monetization: analysis.evaluation?.monetization || null,
@@ -61,7 +61,7 @@ export async function POST(request, { params }) {
       technical_complexity: analysis.evaluation?.technical_complexity || null,
       marketplace_note: analysis.evaluation?.marketplace_note || null,
       failure_risks: analysis.evaluation?.failure_risks || [],
-      confidence_level: analysis.evaluation?.confidence_level || null,
+      evidence_strength: analysis.evaluation?.evidence_strength || null,
     };
 
     // Build meta_json with revision_notes and changed_fields

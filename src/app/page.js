@@ -634,7 +634,7 @@ export default function Home() {
       or: analysis.evaluation?.originality?.score,
       tc: analysis.evaluation?.technical_complexity?.score,
       failure_risks: analysis.evaluation?.failure_risks || [],
-      confidence_level: analysis.evaluation?.confidence_level || null,
+      evidence_strength: analysis.evaluation?.evidence_strength || null,
     } : null);
     setReEvalOriginalIdea(loadedIdeaText || idea);
     setReEvalTargetUser("");
@@ -2806,21 +2806,19 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* Confidence level */}
-                {reEvalContextSnapshot.confidence_level && (
+                {/* Evidence Strength — hidden when HIGH (asymmetric display rule, V4S28 B4) */}
+                {reEvalContextSnapshot.evidence_strength && reEvalContextSnapshot.evidence_strength.level !== "HIGH" && (
                   <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{
                       fontSize: 11,
                       padding: "2px 8px",
                       borderRadius: 9999,
                       fontWeight: 500,
-                      ...(reEvalContextSnapshot.confidence_level.level === "HIGH"
-                        ? { background: "rgba(16,185,129,0.12)", color: "#34d399", border: "1px solid rgba(16,185,129,0.25)" }
-                        : reEvalContextSnapshot.confidence_level.level === "MEDIUM"
+                      ...(reEvalContextSnapshot.evidence_strength.level === "MEDIUM"
                         ? { background: "rgba(245,158,11,0.12)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.25)" }
                         : { background: "rgba(239,68,68,0.12)", color: "#f87171", border: "1px solid rgba(239,68,68,0.25)" }),
                     }}>
-                      {reEvalContextSnapshot.confidence_level.level} confidence
+                      {reEvalContextSnapshot.evidence_strength.level} evidence strength
                     </span>
                   </div>
                 )}
