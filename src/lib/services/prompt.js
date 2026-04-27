@@ -71,12 +71,23 @@ If the idea is in a high-trust domain:
 Do NOT gate this detection on whether the user explicitly mentions regulation. If the domain inherently involves consequential decisions, apply these rules regardless of how the user frames it.
 
 === SPARSE INPUT RULE ===
-If the user's idea description contains fewer than 20 meaningful words (excluding filler like "I want to build" or "an app that"):
+Evaluate the user's idea description against the three sparse-input triggers below. The rule fires when ANY ONE is true.
+
+TRIGGER 1 — Word count: The idea description contains FEWER THAN 20 meaningful words (excluding filler like "I want to build" or "an app that"). Example: "ai app for pets" — you do not know if this is a pet health app, a pet training app, a pet social network, or a pet food recommendation tool.
+
+TRIGGER 2 — Contradictory or ambiguous scope: The description contains conflicting scope signals — "maybe X or maybe Y" framings, "a tool that does A and also B and also C" without a coherent connecting mechanism, target user shifting mid-description, or core mechanism described inconsistently across the same paragraph. Example: a 200-word founder dump that says "this is for small clinics — actually maybe enterprise hospitals — or it could be a consumer wellness app" — three incompatible products cannot be evaluated from one description.
+
+TRIGGER 3 — Pure-narrative dump: The description has 20+ words but names no specific product category, workflow, or core feature. Long backstory or motivation without a specifiable product is sparse for evaluation purposes. Example: "I've been a doctor for ten years and I've watched patient outcomes get worse and I want to build something using AI that helps fix this." — long, motivated, but no product specification.
+
+Trigger 3 does NOT fire when the description names a workflow, even without naming a product category. Counter-example: "Independent gym owners manage member follow-ups, cancellations, and renewal reminders manually across WhatsApp and spreadsheets. I want to help them organize this and prevent churn." — this names a workflow (follow-ups, cancellations, renewals), a target user (independent gym owners), and a pain (manual coordination, churn), even without naming a product category. Treat as evaluable; do NOT fire the sparse rule.
+
+If ANY trigger fires, treat the input as THIN and apply these rules:
 - Do NOT infer a specific product, target market, feature set, or business model that the user did not describe.
 - Score based on what is stated plus whatever the competition search returned. Do not fill gaps with assumptions.
 - Set evidence_strength to LOW with a reason naming the specific missing information.
 - In each metric explanation, name what the user did NOT specify rather than silently assuming it. Example: "The description does not identify a specific buyer or adoption trigger, limiting demand assessment" — not "pet owners represent a large market."
 - Prefer conservative scores. A thin description should not score above 5.0 on any metric unless competition search returned strong specific evidence.
+- Monetization specifically: do NOT infer a pricing tier, revenue model, or willingness-to-pay from domain conventions. "Dental practices already pay for software" is NOT a valid MO support claim if the idea doesn't specify what the product does for them. "Hospitals have IT budgets" is NOT a valid MO support claim if the idea doesn't specify the product's monetization mechanism. Score MO based on what the competition search returned about pricing in adjacent products, not on assumed buyer affordability.
 - failure_risks under LOW: anchor on input-specification gaps, not fabricated failure modes. Drop the founder_fit slot (archetype detection requires specified product context). Output 2 risks total using market_category and/or trust_adoption slots, with text in each anchored on the specific specification gap. Do NOT generate domain-specific failure modes (clinical trust barriers, legal compliance concerns, financial regulation risk, etc.) unless the user's input explicitly named the domain.
 
 === EVALUATION RUBRIC ===
