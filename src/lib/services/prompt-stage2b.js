@@ -193,31 +193,82 @@ If the idea is a marketplace/platform depending on network effects, set marketpl
 7. MD-OR INDEPENDENCE CHECK: After scoring both Market Demand and Originality, verify they are driven by different evidence. MD should be driven by buyer urgency, adoption friction, and need recurrence from the MD packet. OR should be driven by replication difficulty and competitor overlap from the OR packet. If both scores are above 6.0, verify each explanation cites different causal facts. If both explanations rely on the same underlying signal (e.g., "underserved market segment" boosting MD and "gap in competitor offerings" boosting OR), these are the same observation — lower the metric where the signal is weaker. An unserved market gap is primarily an MD fact (demand exists). It is only an OR fact if the gap exists because replication is genuinely hard — not merely because no one has built it yet.
 
 === EVIDENCE STRENGTH ===
-This field evaluates three things combined: evidence sufficiency, market legibility, and input specificity. It is NOT a claim about the system's authority over whether the idea will succeed.
 
-- HIGH — strong competitor/domain evidence base, well-defined product, clear market category.
-- MEDIUM — evidence base exists but has a specific concrete gap (buyer urgency under-evidenced, replication barrier unclear, adoption mechanism unproven, input scope leaves pricing ambiguous, etc.).
-- LOW — input is too thin, contradictory, or non-specific to ground a meaningful evaluation.
+This field flags whether the user's input has a specific, addressable gap that — if filled with one or two sentences — would materially sharpen the evaluation. The flag is for the user's benefit: a constructive nudge to add one detail that would change the read.
 
-Do NOT produce reasoning that reads as confidence ABOUT the idea ("this idea will likely succeed/fail" / "the evaluation is reliable"). The field reports how well-grounded the evaluation can be, not an authority claim about outcomes.
+CRITICAL RULE — DO NOT ASK THE USER TO PROVE THE MARKET:
+Do NOT use MEDIUM to ask the user to prove demand, urgency, willingness to pay, adoption trust, regulatory acceptance, or external validation. Those questions are evaluated by the product analysis itself (MD, MO, OR, failure_risks). MEDIUM only flags missing product/context details the user can state in a sentence.
 
-MEDIUM REASON REQUIREMENT: If you set evidence_strength to MEDIUM, the reason must identify a specific, concrete gap in the evidence base that affects the evaluation.
+Evidence Strength is NOT:
+- A claim about whether the idea will succeed
+- A measure of how confident the system is in its scoring
+- A flag for evidence-base gaps that the user cannot act on (search retrieval thinness, market category illegibility, lack of external validation data) — these silently bias scores down via the anti-inflation rules above; they do NOT trigger an Evidence Strength flag
 
-Valid MEDIUM reasons (specific concrete gaps):
-- "Buyer urgency is under-evidenced — no signal of whether dental practices prioritize this pain point"
-- "Replication barrier is unclear because incumbent behavior varies across competitors"
-- "Input scope leaves pricing model ambiguous between per-seat and per-usage"
-- "Adoption mechanism is unproven — no data on whether clinicians trust AI in this workflow"
+LEVELS:
 
-Invalid MEDIUM reasons (generic hedging):
-- "Clear market with some uncertainty"
-- "Reasonably established category"
+- HIGH — the input contains the user-addressable details needed to ground the evaluation. External market uncertainty, thin search evidence, or lack of validation may still reduce scores, but they do not lower this field by themselves. Default state for well-formed inputs. Silent in UI.
+
+- MEDIUM — the input is evaluable, but at least one specific user-addressable detail is materially absent. If multiple gaps exist, name the SINGLE most important one in the reason — the one whose addition would most change the evaluation. The user receives one nudge, not a checklist.
+
+- LOW — the input is not safely evaluable because fundamental product specification is absent, contradictory, or unstable. Concretely:
+  - one or more of {target user, workflow, core feature} is missing, OR
+  - multiple incompatible products are described in one input, OR
+  - target/workflow/feature are stated but cannot be reconciled into a single coherent product
+  Rare after the upstream Haiku gate; functions as defense-in-depth.
+
+MEDIUM MATERIALITY TEST (apply before firing MEDIUM):
+
+Ask: "If the user added one or two sentences addressing this gap, would the score, monetization read, competitor interpretation, or execution path change in a meaningful way?"
+
+- If YES → MEDIUM is appropriate. Name the single most important gap.
+- If NO → use HIGH. The detail is nice-to-have, not material.
+
+VALID MEDIUM REASONS (input-side, user-addressable, materially affecting the evaluation):
+
+- "Pricing model not specified — per-seat, per-usage, and freemium would each lead to a different monetization read"
+- "Buyer not distinguished from user — who pays for this product is implicit and changes the market demand framing"
+- "Distribution channel not addressed — for a category where reach is the binding constraint, the go-to-market path is unstated"
+- "Competitive positioning not articulated — incumbents in this category are obvious, but the differentiation against them is not stated"
+- "Product mechanism named but not operationalized — the input describes WHAT the product helps with but not WHAT IT DOES FIRST to deliver that help; different first-action choices would lead to different evaluations"
+- "Target segment too broad — the evaluation would shift materially depending on which sub-segment is the actual focus"
+
+INVALID MEDIUM REASONS (do NOT fire MEDIUM on any of these):
+
+Category 1 — Evidence-side gaps the user cannot fix:
+- "Buyer urgency is under-evidenced" → search retrieval limitation
+- "Adoption mechanism is unproven" → market/data limitation
+- "Replication barrier unclear because incumbent behavior varies" → evidence interpretation
+- "External validation lacking" → search-side limitation
+
+Category 2 — Risks or market findings that belong in metric explanations:
+- "Trust barrier is high in clinical workflows" → belongs in OR or failure_risks
+- "Competition is intense" → belongs in OR explanation
+- "Adoption could be hard" → belongs in MD explanation or failure_risks
+- "Incumbents may copy this" → belongs in OR explanation
+- "Market willingness is uncertain" → belongs in MD explanation
+These are real evaluation findings, not Evidence Strength reasons. The score and explanations carry them; Evidence Strength does not.
+
+Category 3 — Nice-to-have details that don't materially change the read:
+- Implementation/tech details not mentioned, UNLESS feasibility or moat depends directly on the implementation approach
+- Geographic scope not narrowed, UNLESS regulated/local/marketplace domain where geography materially changes evaluation
+- Stage of progress not stated (concept vs MVP vs in-market — useful context but rarely material to scoring)
+- Founder background details (handled by TC, not Evidence Strength)
+
+Category 4 — Generic hedging:
 - "Some aspects could be stronger"
+- "Reasonably established category"
 - "Generally well-understood but not fully certain"
+- "Clear market with some uncertainty"
 
-If the evidence base is solid and no specific gap requires flagging, use HIGH. If the input is too thin or contradictory to produce a meaningful evaluation, use LOW. MEDIUM is reserved for the specific case where a concrete gap warrants user attention.
+If the input is evaluable and no specific user-addressable gap meets the materiality test, use HIGH. Most well-formed inputs should land here.
 
-Provide a one-sentence reason. Be specific.
+If the input is so thin that fundamental specification is missing, use LOW (defense-in-depth — Haiku gate normally catches these upstream).
+
+MEDIUM REQUIRES: a one-sentence reason that names the specific gap AND makes clear what KIND of detail the user could add to address it. The reason will appear in a user-facing callout below the score. Frame it as a constructive observation, not a request for proof.
+
+Good: "Pricing model not specified — per-seat, per-usage, and freemium would each lead to a different monetization read."
+
+Bad: "Pricing model is unclear." (Doesn't imply what to add. Sounds like a complaint.)
 
 === THIN DIMENSIONS (LOW only — UI metadata field) ===
 This field is OPTIONAL UI metadata — it must NOT affect any score, rubric level, or explanation. Generate it ONLY when evidence_strength.level is LOW.
