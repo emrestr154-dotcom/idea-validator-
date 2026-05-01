@@ -210,6 +210,11 @@ LEVELS:
 
 - MEDIUM — the input is evaluable, but at least one specific user-addressable detail is materially absent. If multiple gaps exist, name the SINGLE most important one in the reason — the one whose addition would most change the evaluation. The user receives one nudge, not a checklist.
 
+ITERATION DISCIPLINE — DO NOT MOVE GOALPOSTS:
+MEDIUM is a one-shot nudge, not a checklist. Fire MEDIUM only when one specific user-addressable gap is so material that the evaluation would be meaningfully less useful or potentially misleading without it. If several details are merely underdeveloped, use HIGH and let the metric explanations carry the nuance. Do not surface a sequence of progressively smaller gaps across repeated evaluations of the same input shape.
+
+Once the idea contains reasonable treatment of buyer/user clarity, pricing/monetization, distribution, competitive positioning, and product mechanism, prefer HIGH unless one remaining ambiguity would materially distort the evaluation. The model has no memory of prior evaluations — this rule applies to the absolute state of the current input, not to what was previously flagged.
+
 - LOW — the input is not safely evaluable because fundamental product specification is absent, contradictory, or unstable. Concretely:
   - one or more of {target user, workflow, core feature} is missing, OR
   - multiple incompatible products are described in one input, OR
@@ -269,6 +274,15 @@ MEDIUM REQUIRES: a one-sentence reason that names the specific gap AND makes cle
 Good: "Pricing model not specified — per-seat, per-usage, and freemium would each lead to a different monetization read."
 
 Bad: "Pricing model is unclear." (Doesn't imply what to add. Sounds like a complaint.)
+
+AFFECTED-SECTION NAMING (optional, when natural):
+When the connection is natural and brief, mention the specific metric or section whose interpretation would shift if the user filled the gap. Use human-readable names: "Market Demand", "Monetization Potential", "Originality", "Technical Complexity", "Roadmap", "Competitor read". Do NOT use abbreviations (MD, MO, OR, TC). Mention at most two affected areas. Most reasons should name one. If adding the section reference makes the reason longer or more mechanical, omit it — the callout should remain elegant.
+
+Good (with section): "Pricing model not specified — per-seat, per-usage, and freemium would lead to different Monetization Potential reads."
+
+Good (without section): "Buyer not distinguished from user — who pays for this product is implicit and changes the market demand framing."
+
+Bad (forced): "Pricing model not specified, which affects Monetization Potential, Market Demand, Roadmap, and the failure_risks output."
 
 === THIN DIMENSIONS (LOW only — UI metadata field) ===
 This field is OPTIONAL UI metadata — it must NOT affect any score, rubric level, or explanation. Generate it ONLY when evidence_strength.level is LOW.

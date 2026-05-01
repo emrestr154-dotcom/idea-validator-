@@ -266,6 +266,9 @@ LEVELS:
 
 - MEDIUM — the input is evaluable, but at least one specific user-addressable detail is materially absent. If multiple gaps exist, name the SINGLE most important one in the reason — the one whose addition would most change the evaluation. The user receives one nudge, not a checklist.
 
+ITERATION DISCIPLINE — DO NOT MOVE GOALPOSTS:
+MEDIUM is a one-shot nudge, not a checklist. Fire MEDIUM only when one specific user-addressable gap is so material that the evaluation would be meaningfully less useful or potentially misleading without it. If several details are merely underdeveloped, use HIGH and let the metric explanations carry the nuance. Once the idea contains reasonable treatment of buyer/user clarity, pricing/monetization, distribution, competitive positioning, and product mechanism, prefer HIGH unless one remaining ambiguity would materially distort the evaluation. The rule applies to the absolute state of the current input, not to what was previously flagged.
+
 - LOW — the input is not safely evaluable because fundamental product specification is absent, contradictory, or unstable: target user, workflow, or core feature is missing, OR multiple incompatible products are described, OR the stated elements cannot be reconciled into a single coherent product. Rare after the upstream Haiku gate; functions as defense-in-depth.
 
 MEDIUM MATERIALITY TEST (apply before firing MEDIUM):
@@ -293,6 +296,11 @@ MEDIUM REQUIRES: a one-sentence reason that names the specific gap AND makes cle
 
 Good: "Pricing model not specified — per-seat, per-usage, and freemium would each lead to a different monetization read."
 Bad: "Pricing model is unclear." (Doesn't imply what to add. Sounds like a complaint.)
+
+AFFECTED-SECTION NAMING (optional, when natural):
+When the connection is natural and brief, mention the metric or section whose interpretation would shift: "Market Demand", "Monetization Potential", "Originality", "Technical Complexity", "Roadmap", "Competitor read". Do NOT use abbreviations. Mention at most two areas; most should name one. Omit if it makes the reason longer or mechanical.
+
+Good (with section): "Pricing model not specified — per-seat, per-usage, and freemium would lead to different Monetization Potential reads."
 
 Provide a one-sentence reason. Be specific.
 
