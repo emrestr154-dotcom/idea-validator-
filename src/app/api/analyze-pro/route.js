@@ -68,18 +68,62 @@ export async function POST(request) {
         }
 
         try {
-          // Helper to clean markdown fences from LLM JSON responses
+          // Helper to clean LLM JSON responses, handling:
+          //   - Bare JSON: { ... }
+          //   - Markdown-fenced JSON: ```json\n{ ... }\n```
+          //   - JSON preceded by prose preamble: "Looking at this... 1. **HARDEST...** ```json\n{ ... }\n```"
+          //   - JSON followed by trailing prose or fences
+          //
+          // V4S28 B9 Stage TC parse hardening (May 4, 2026):
+          // Original implementation only stripped ```json fences when they
+          // appeared at startsWith()/endsWith() positions. On long structured
+          // inputs (e.g. "Sherpa" devex monitoring pitch — ~3.2k chars / 450
+          // words with formal IDE-plugin / tutorial-vs-real-engineering
+          // framing), Stage TC leaked its internal reasoning headers
+          // (HARDEST TECHNICAL PROBLEM / SIMPLEST WORKING VERSION /
+          // BEYOND-TUTORIAL GAP) as visible output preamble before the
+          // ```json fence — breaking the startsWith() check and causing
+          // JSON.parse() to fail on prose. Two consecutive Pro-pipeline runs
+          // both failed identically; Standard pipeline (unified prompt) on
+          // same input succeeded — confirming bug is in Stage TC's isolated
+          // parser path, not the input or the model.
+          //
+          // This helper is shared across Stage 1, Stage 2a, Stage 2b,
+          // Stage 2c, Stage 3, AND Stage TC (every parse in this route).
+          // Stage TC was the first to surface the bug because its isolated-
+          // call attention budget makes it more prone to preamble leak.
+          // Other stages were vulnerable to the same bug; this fix covers
+          // all six call sites with one helper change. Pure additive
+          // upgrade — every input the old parser handled correctly still
+          // parses identically; only previously-failing inputs (prose
+          // preamble) now succeed.
+          //
+          // Stage TC reasoning logic + prompt are NOT changed by this fix
+          // (off-limits per active TC monitoring directive — anchor-fixing
+          // bug from B6 surfaced; TC scoring math + reasoning are locked
+          // until dedicated TC fix session). Output format hardening at
+          // prompt level deferred to that session.
           function cleanJsonResponse(text) {
-            let cleaned = text.trim();
-            if (cleaned.startsWith("```json")) {
-              cleaned = cleaned.slice(7);
-            } else if (cleaned.startsWith("```")) {
-              cleaned = cleaned.slice(3);
+            if (!text || typeof text !== "string") {
+              return text;
             }
-            if (cleaned.endsWith("```")) {
-              cleaned = cleaned.slice(0, -3);
+            const trimmed = text.trim();
+            // Locate the first { and the last } — covers all wrapping cases:
+            //   - bare JSON: first { at 0, last } at end-1
+            //   - fenced JSON: first { after ```json, last } before ```
+            //   - prose preamble + fenced JSON: first { after preamble + ```json
+            //   - prose preamble + bare JSON: first { after preamble
+            //   - JSON + trailing prose: first { at start, last } before trailing
+            const firstBrace = trimmed.indexOf("{");
+            const lastBrace = trimmed.lastIndexOf("}");
+            if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
+              // No JSON object found — return trimmed input so the JSON.parse
+              // call below produces the same failure shape it always did.
+              // Defensive: do not mask non-JSON responses; let them surface
+              // as parse errors so the existing error handling fires.
+              return trimmed;
             }
-            return cleaned.trim();
+            return trimmed.slice(firstBrace, lastBrace + 1);
           }
 
           // ============================
