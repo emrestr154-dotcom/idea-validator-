@@ -792,16 +792,22 @@ export function PreviewBanner({ t, evalsRemaining }) {
 // - Complete-example footer below the cards (D2 reversed — parts first,
 //   assembled example last).
 //
-// Locked design: execution-plan-v4-3-4.md Section 13 / Item 7.
-// `missing_elements` is a coarse 3-value enum: target_user / workflow / core_feature.
+// Locked design: execution-plan-v4-3-7.md Section 13 / Item 7 + pre-B10a
+// Haiku calibration revisit (May 4, 2026).
+// `missing_elements` is a coarse 3-value enum: target_user / use_case / mechanism.
 // Unknown values are filtered. Empty array falls back to "all 3 missing"
 // (defensive — should not happen if gate fired correctly).
 //
+// Enum semantics (locked May 4, 2026):
+// - target_user = adoption unit (not necessarily literal payer)
+// - use_case    = job/pain/task/workflow under one umbrella
+// - mechanism   = how the product intervenes (feature/process/automation/method)
+//
 // Per-slot accent colors (1.5px top border) signal the dimension each card
-// represents — Pink (audience), Teal (process), Purple (mechanism).
+// represents — Pink (audience), Teal (use case), Purple (mechanism).
 // Light-mode hex = ramp 600 stop, dark-mode hex = ramp 200 stop, per the
 // design system's "light = 600 stroke, dark = 200 stroke" convention.
-const SLOT_ORDER = ["target_user", "workflow", "core_feature"];
+const SLOT_ORDER = ["target_user", "use_case", "mechanism"];
 
 const MISSING_ELEMENT_CARDS = {
   target_user: {
@@ -810,15 +816,15 @@ const MISSING_ELEMENT_CARDS = {
     example: "solo professionals · small clinics · enterprise teams",
     accent: { light: "#993556", dark: "#ED93B1" }, // Pink 600 / 200
   },
-  workflow: {
-    title: "What workflow?",
-    passedTitle: "Workflow",
-    example: "scheduling · drafting documents · summarizing meetings",
+  use_case: {
+    title: "What does it help with?",
+    passedTitle: "Use case",
+    example: "scheduling appointments · drafting documents · tracking inventory",
     accent: { light: "#0F6E56", dark: "#5DCAA5" }, // Teal 600 / 200
   },
-  core_feature: {
-    title: "What does it do?",
-    passedTitle: "Core feature",
+  mechanism: {
+    title: "How does it work?",
+    passedTitle: "Mechanism",
     example: "automates reminders · turns chat into tasks · drafts from templates",
     accent: { light: "#534AB7", dark: "#AFA9EC" }, // Purple 600 / 200
   },

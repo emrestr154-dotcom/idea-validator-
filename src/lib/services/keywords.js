@@ -4,6 +4,44 @@ import client from "./anthropic-client";
 // KEYWORD EXTRACTION + SPECIFICITY GATE (Claude Haiku)
 // ============================================
 // V4S28 B7 (April 28, 2026) — Section 13 / Item 7 locked design.
+// V4S28 PRE-B10A HAIKU CALIBRATION REVISIT (May 4, 2026) — recalibrated to fix
+// over-strictness on real-world multi-product / conversational-tone inputs.
+//
+// === RECALIBRATION RECORD (May 4, 2026) ===
+//
+// Trigger: B9 thin_dimensions hygiene smoke testing surfaced a 100+ word
+// restaurant manager input with target_user named, three concrete workflows,
+// and three concrete features being gated for "multi-product" framing. The
+// gate was effectively answering "is this a single coherent product?" when
+// the locked design intent is "did the user give us enough to evaluate?"
+//
+// Locked design changes:
+//   1. Enum rename: workflow → use_case, core_feature → mechanism
+//      (target_user kept). Conceptual frame: target_user = adoption unit
+//      (not necessarily literal payer); use_case = job/pain/task/workflow
+//      under one umbrella; mechanism = how the product intervenes.
+//   2. Word-count thresholds dropped. Gate is purely on slot presence with
+//      concrete-action guardrail (generic benefit language fails).
+//   3. Multi-product is NOT a fail condition. Multi-product with stable slots
+//      PASSES; downstream Stage 2b surfaces multi-product framing via
+//      evidence_strength MEDIUM/LOW with idea-specific bullets.
+//   4. Pass criterion: target_user + use_case + mechanism each have concrete
+//      content beyond category labels or generic benefit language. May
+//      overlap (use_case ≈ mechanism collapse case). Conversational tone is
+//      fine. Imperfect framing is fine. Internal contradiction is fine.
+//   5. Example matrix expanded to 14 rows in PASS-first order to avoid
+//      anchoring Haiku on rejection. Restaurant case is the canonical
+//      multi-product PASS demonstration.
+//
+// What did NOT change:
+//   - Default-to-PASS calibration discipline (locked from B7)
+//   - Profile-blind by signature (locked from B6)
+//   - Output JSON two-branch shape (locked from B7)
+//   - Defense-in-depth principle (Stage 1 + 2a + 2b + 2c + 3 catch sparse
+//     inputs that slip through)
+//   - Fallback path for Haiku call errors (returns crude keywords PASS-shape)
+//
+// === ORIGINAL B7 DESIGN RECORD ===
 //
 // Two responsibilities:
 //   1. Specificity gate — detect underspecified inputs and short-circuit
@@ -27,42 +65,61 @@ import client from "./anthropic-client";
 // + Stage 2a + Stage 2b + Stage 2c + Stage 3 catch sparse inputs that slip
 // through the gate.
 //
-// Counter-example clause (B5/B6 carryover): problem-first inputs that name
-// target user + workflow + concrete pain (NC4-class, e.g., gym-owners
-// follow-up case) must NOT fire the gate. Verified by the gym-owners row in
-// the example matrix.
-//
 // Cost: ~$0.001 per call. Latency: ~1.2s (specificity check adds ~200ms).
 
 const SPECIFICITY_FAIL_MESSAGE =
-  "Input lacks specific product category, workflow, or feature. Please describe what the product does (e.g., 'appointment scheduling', 'patient intake forms', 'clinical note generation') to enable evaluation.";
+  "To evaluate this idea, please name who the product is for, the specific task or pain it addresses, and how the product intervenes.";
 
 const SYSTEM_PROMPT = `You evaluate idea descriptions for evaluation-readiness, then extract keywords for ones that pass.
 
 === STEP 1: SPECIFICITY CHECK (FIRST STEP) ===
 
-Before extracting keywords, evaluate whether the idea description meets specificity threshold.
+Before extracting keywords, evaluate whether the idea description gives us enough to evaluate it.
 
-The input FAILS the specificity check if ANY of the following is clearly true:
-1. Contains fewer than 20 meaningful words AND no specific product category, workflow, or core feature is named
-2. Contains contradictory or ambiguous scope signals (tool that does A and also B and also C without coherent connection; target user shifts mid-description; mixed enterprise/consumer framing)
-3. Contains 20+ words but reads as narrative description without naming what the product does
+The input PASSES the specificity check when all THREE conceptual slots have concrete content:
 
-CALIBRATION DISCIPLINE — DEFAULT TO PASS (WITH A QUALIFIER): Default to PASS only when the product, workflow, or feature is actually named in the input — even if the input is brief. NOT when the idea "sounds plausible" or when you can imagine a reasonable product from the description. Imaginability ≠ specificity. SP1's "tool for dentists to save time" fails because no product is named, even though a plausible dental product can be imagined. "AI tool for dentists to automate prior authorizations" passes because the product IS named.
+- target_user — WHO the product is for. The adoption unit (the person, team, or organization whose adoption defines success). May be a paying buyer, a free user, a consumer, or an internal team. "Students," "small law firms," "restaurant managers," "high-school biology teachers," "freelance designers" — all valid target_user content.
+
+- use_case — WHAT job, pain, task, or workflow the product addresses. May be a process step ("automate prior authorizations"), a pain ("manual coordination across WhatsApp and spreadsheets"), a task domain ("manage client invoices"), or a workflow ("scheduling appointments"). The verb-object phrase must be operationally concrete — naming a specific task on a specific domain.
+
+- mechanism — HOW the product intervenes. May be a feature, a process, an automation, an interaction model, or a concrete method. "Drafts emails from voice notes," "AI quiz generator," "POS integration alerts," "automates reminders" — all valid mechanism content. May overlap with use_case wording when one phrase carries both meanings ("manage client invoices" satisfies both).
+
+The input FAILS the specificity check when any of the three slots is absent or expressed only as generic benefit language.
+
+GENERIC BENEFIT LANGUAGE — does NOT satisfy any slot:
+- "save time"
+- "improve productivity"
+- "be more productive"
+- "help businesses grow"
+- "improve workflow"
+- "make X easier"
+- "the future of [domain]"
+
+CALIBRATION DISCIPLINE — DEFAULT TO PASS WHEN SLOTS ARE PRESENT:
+- PASS when target_user, use_case, and mechanism are concretely named — even if the input is brief, conversational, multi-product, or imperfect.
+- PASS when the input describes multiple product workflows or features under a single coherent buyer. Multi-product framing is NOT a failure condition. Downstream evaluation surfaces multi-product observations via Stage 2b's evidence_strength.
+- PASS when use_case and mechanism overlap in a single phrase ("manage client invoices" satisfies both).
+- PASS when the buyer is a free user, consumer, or non-payer adoption unit — "students," "patients," "hobbyists" all count.
+- FAIL only when the input cannot anchor a target_user / use_case / mechanism reading. Imaginability ≠ specificity. The model picking a plausible interpretation does not satisfy the slot — the user must have named it.
 
 PASS/FAIL EXAMPLES — these calibrate the threshold:
 
 | Input | Decision | Why |
 |---|---|---|
-| "tool for dentists to save time" | FAIL | 6 words, no product category, no workflow, no feature named |
-| "AI tool for dentists to automate prior authorizations" | PASS | Short but dense — names target user (dentists), product type (AI tool), AND specific workflow (prior authorization automation). Demonstrates that specificity is about product commitment, not word count. |
-| "AI Shopify pricing optimizer" | PASS | 4 words but names product type (optimizer), domain (Shopify), and feature (pricing). Sparse but specific. |
-| "AI workflow tool for SMB accountants" | PASS | 6 words, names target user (SMB accountants) + product type (workflow tool). Sparse but specific. |
-| "Independent gym owners manage member follow-ups, cancellations, and renewal reminders manually across WhatsApp and spreadsheets. I want to help them organize this and prevent churn." | PASS | Problem-first framing with workflow (member follow-ups, cancellations, renewal reminders) + target user (independent gym owners) + concrete pain (manual coordination across WhatsApp + spreadsheets) all named. Evaluable — does NOT fire Trigger 3. |
-| "platform that helps people maybe X or Y, could be enterprise or consumer, focused on the future of work" | FAIL | Long but contradictory scope (enterprise vs consumer; X or Y); no specific product |
-| "platform for the future of work for teams and creators and enterprises" | FAIL | Long, uses specific-sounding words (platform, teams, creators, enterprises), but commits to nothing. No product, no workflow, no feature. Fake-specific. Demonstrates that naming domains/audiences ≠ naming a product. |
-| 200-word philosophical narrative about "AI changing how we work" without naming what the product is, who uses it, or what it does | FAIL | Long but non-product-like; no actual product named |
-| "AI-powered document automation tool for small law firms (under 20 attorneys). Ingests client intake forms, generates draft engagement letters, retainer agreements, and client memos based on firm templates." | PASS | Long, names target user (small law firms), product type (document automation), and core features (intake, drafting). Well-formed. |
+| "AI tool for dentists to automate prior authorizations" | PASS | target_user (dentists), use_case (prior authorization), mechanism (automation) all named — short but concrete. |
+| "tool for dentists to save time" | FAIL | target_user named (dentists); use_case is generic benefit ("save time"), not a concrete task; mechanism not named. |
+| "AI Shopify pricing optimizer" | PASS | target_user (Shopify merchants), use_case (pricing optimization), mechanism (AI optimizer) — sparse but specific. |
+| "AI assistant for teachers" | FAIL | target_user named (teachers); use_case absent (no concrete task domain); mechanism generic ("assistant"). |
+| "AI quiz generator for high-school biology teachers" | PASS | target_user (high-school biology teachers — adoption unit, not literal payer), use_case (quiz creation), mechanism (AI generator) all named. |
+| "AI workflow tool for SMB accountants" | PASS | target_user (SMB accountants), use_case (accounting workflow), mechanism (AI workflow tool) — sparse but specific. |
+| "A tool for freelance designers to manage their client invoices." | PASS | target_user (freelance designers), use_case ≈ mechanism (manage client invoices — verb-object concrete enough that one phrase carries both slots). |
+| "Independent gym owners manage member follow-ups, cancellations, and renewal reminders manually across WhatsApp and spreadsheets. I want to help them organize this and prevent churn." | PASS | target_user (independent gym owners), use_case (follow-ups, cancellations, renewals — concrete tasks), mechanism (organize manual coordination across WhatsApp + spreadsheets) all named — problem-first framing. |
+| "I want to build something for freelance writers that helps them keep track of pitches they've sent and which editors haven't replied yet." | PASS | target_user (freelance writers), use_case (pitch tracking), mechanism (track sent pitches and editor reply status) — conversational tone, all three slots named. |
+| "I've been a doctor for ten years and I've watched patient outcomes get worse and I want to build something using AI that helps fix this." | FAIL | target_user partial (doctors? patients?); use_case absent (no concrete task); mechanism absent ("something using AI"). Long but non-product narrative. |
+| "I want to build something for clinics, hospitals, wellness users, and maybe patients that improves care, operations, and communication with AI." | FAIL | target_user scattered (clinics + hospitals + wellness + patients — no anchored adoption unit); use_case generic ("improve care, operations, communication"); mechanism generic ("with AI"). FAILs because no slot is concretely named — NOT because the input spans multiple areas. |
+| "platform for the future of work for teams and creators and enterprises" | FAIL | target_user diffuse (teams + creators + enterprises — naming domains is not naming a buyer); use_case absent ("future of work" is not a task); mechanism absent. Fake-specific phrasing — sounds product-like but commits to nothing. |
+| "I'm building a tool for restaurant managers to handle inventory, customer loyalty, and staff scheduling. It would send POS integration alerts when inventory is low, run email campaigns with personalized offers based on order history, and let managers swap shifts on a mobile interface." | PASS | target_user (restaurant managers — single coherent buyer), use_case (inventory tracking + loyalty + scheduling — three concrete tasks under one buyer), mechanism (POS alerts + personalized email campaigns + mobile shift swap — three concrete mechanisms). Multi-product is not a failure condition; all three slots are named. |
+| "AI-powered document automation tool for small law firms (under 20 attorneys). Ingests client intake forms, generates draft engagement letters, retainer agreements, and client memos based on firm templates." | PASS | target_user (small law firms), use_case (document automation — intake, drafting), mechanism (ingests forms, generates drafts from templates) all named — long, well-formed anchor. |
 
 === STEP 2: OUTPUT FORMAT ===
 
@@ -71,7 +128,7 @@ Return ONLY a JSON object — no prose, no markdown fences, no explanation.
 If the input FAILS the specificity check:
 {"specificity_insufficient": true, "missing_elements": [...]}
 
-The "missing_elements" array contains one or more values from this exact 3-value enum: "target_user", "workflow", "core_feature". Include only the genuinely missing elements. Don't invent finer taxonomies.
+The "missing_elements" array contains one or more values from this exact 3-value enum: "target_user", "use_case", "mechanism". Include only the genuinely missing elements. Don't invent finer taxonomies.
 
 If the input PASSES the specificity check, extract exactly 5 searchable keywords:
 {"keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]}
@@ -120,7 +177,7 @@ export async function extractKeywords(ideaText) {
 
     // FAIL path — gate fires
     if (parsed.specificity_insufficient === true) {
-      const validSlots = ["target_user", "workflow", "core_feature"];
+      const validSlots = ["target_user", "use_case", "mechanism"];
       const missingElements = Array.isArray(parsed.missing_elements)
         ? parsed.missing_elements.filter((s) => validSlots.includes(s))
         : [];

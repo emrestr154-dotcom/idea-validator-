@@ -216,9 +216,9 @@ MEDIUM is a one-shot nudge, not a checklist. Fire MEDIUM only when one specific 
 Once the idea contains reasonable treatment of buyer/user clarity, pricing/monetization, distribution, competitive positioning, and product mechanism, prefer HIGH unless one remaining ambiguity would materially distort the evaluation. The model has no memory of prior evaluations — this rule applies to the absolute state of the current input, not to what was previously flagged.
 
 - LOW — the input is not safely evaluable because fundamental product specification is absent, contradictory, or unstable. Concretely:
-  - one or more of {target user, workflow, core feature} is missing, OR
+  - one or more of {target user, use case, mechanism} is missing, OR
   - multiple incompatible products are described in one input, OR
-  - target/workflow/feature are stated but cannot be reconciled into a single coherent product
+  - target/use_case/mechanism are stated but cannot be reconciled into a single coherent product
   Rare after the upstream Haiku gate; functions as defense-in-depth.
 
 MEDIUM MATERIALITY TEST (apply before firing MEDIUM):
@@ -289,9 +289,9 @@ This field is OPTIONAL UI metadata — it must NOT affect any score, rubric leve
 
 When LOW: after all scores, explanations, and the evidence_strength.reason are complete, identify which conceptual dimensions of the input are missing. Use ONLY values from this exact 3-value enum:
 
-- "target_user" — the user role, buyer, or specific situation is not named
-- "workflow" — the specific workflow or pain point is not named (only the category)
-- "core_feature" — the concrete feature, mechanism, or what the product actually does first is not named
+- "target_user" — the user role, buyer, or specific situation is not named (the adoption unit, not necessarily a literal payer)
+- "use_case" — the specific job, pain, task, or workflow the product addresses is not named (only the category)
+- "mechanism" — the concrete way the product intervenes is not named (only the abstract benefit)
 
 Include only the dimensions that are genuinely missing for THIS input. Do NOT invent finer taxonomies. Do NOT include monetization, market_demand, originality, technical_complexity, buyer_urgency, pricing, or any other label — only the three enum values above.
 
@@ -309,7 +309,7 @@ Write explanations that are specific, causally clear, and proportionate to the e
     "evidence_strength": {
       "level": "HIGH | MEDIUM | LOW",
       "reason": "One sentence explaining what drives the evidence strength assessment",
-      "thin_dimensions": ["target_user", "workflow", "core_feature"]
+      "thin_dimensions": ["target_user", "use_case", "mechanism"]
     },
     "market_demand": {
       "score": 6.5,

@@ -269,7 +269,7 @@ LEVELS:
 ITERATION DISCIPLINE — DO NOT MOVE GOALPOSTS:
 MEDIUM is a one-shot nudge, not a checklist. Fire MEDIUM only when one specific user-addressable gap is so material that the evaluation would be meaningfully less useful or potentially misleading without it. If several details are merely underdeveloped, use HIGH and let the metric explanations carry the nuance. Once the idea contains reasonable treatment of buyer/user clarity, pricing/monetization, distribution, competitive positioning, and product mechanism, prefer HIGH unless one remaining ambiguity would materially distort the evaluation. The rule applies to the absolute state of the current input, not to what was previously flagged.
 
-- LOW — the input is not safely evaluable because fundamental product specification is absent, contradictory, or unstable: target user, workflow, or core feature is missing, OR multiple incompatible products are described, OR the stated elements cannot be reconciled into a single coherent product. Rare after the upstream Haiku gate; functions as defense-in-depth.
+- LOW — the input is not safely evaluable because fundamental product specification is absent, contradictory, or unstable: target user, use case, or mechanism is missing, OR multiple incompatible products are described, OR the stated elements cannot be reconciled into a single coherent product. Rare after the upstream Haiku gate; functions as defense-in-depth.
 
 MEDIUM MATERIALITY TEST (apply before firing MEDIUM):
 
@@ -310,8 +310,8 @@ When evidence_strength.level is "LOW", populate evidence_strength.thin_dimension
 
 Allowed values only — exactly three:
 - target_user
-- workflow
-- core_feature
+- use_case
+- mechanism
 
 Generation rules:
 - Generate this field ONLY when level is LOW. Omit the field entirely from the JSON output when level is HIGH or MEDIUM (do not emit null or empty array on those levels).
@@ -321,7 +321,7 @@ Generation rules:
 
 This is UI metadata only. Do NOT let it affect scores, metric explanations, roadmap, failure_risks, or summary.
 
-Example: An input like "AI tool for dentists to help with day-to-day work" may produce ["workflow", "core_feature"] — target_user ("dentists") is clear, but the specific workflow and concrete feature aren't named. Output only the slots that are genuinely absent; do not always output all three.
+Example: An input like "AI tool for dentists to help with day-to-day work" may produce ["use_case", "mechanism"] — target_user ("dentists") is clear, but the specific use case (what task/pain) and concrete mechanism (how the product intervenes) aren't named. Output only the slots that are genuinely absent; do not always output all three.
 
 === FAILURE RISKS ===
 Output 2 to 4 structured failure risks using a slot system. Each risk has a slot, an optional archetype, and prose text.
@@ -457,7 +457,7 @@ Assign each phase a phase_type:
     "evidence_strength": {
       "level": "HIGH | MEDIUM | LOW",
       "reason": "One sentence explaining what drives the evidence strength assessment",
-      "thin_dimensions": ["array of 0-3 values from {target_user, workflow, core_feature} — INCLUDE this field ONLY when level is LOW; OMIT entirely on HIGH or MEDIUM"]
+      "thin_dimensions": ["array of 0-3 values from {target_user, use_case, mechanism} — INCLUDE this field ONLY when level is LOW; OMIT entirely on HIGH or MEDIUM"]
     },
     "failure_risks": [
       {

@@ -440,7 +440,7 @@ ${JSON.stringify(stage2aResult)}`;
             ev.evidence_strength.level === "LOW" &&
             Array.isArray(ev.evidence_strength.thin_dimensions)
           ) {
-            const validEnum = ["target_user", "workflow", "core_feature"];
+            const validEnum = ["target_user", "use_case", "mechanism"];
             preservedThinDimensions = ev.evidence_strength.thin_dimensions.filter(
               (d) => typeof d === "string" && validEnum.includes(d)
             );

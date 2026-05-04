@@ -605,7 +605,7 @@ export default function Home() {
       // Full inline panel UI is deferred to B8 (frontend polish bundle).
       // No credit charged (early return before usage recording).
       if (result.specificityInsufficient) {
-        setError("This revision needs more specificity to evaluate honestly. Edit the description to include what the product does, who uses it, and the specific workflow it helps with — then try again.");
+        setError("This revision needs more specificity to evaluate honestly. Edit the description to name who the product is for, the specific task or pain it addresses, and how the product intervenes — then try again.");
         return;
       }
 
@@ -1612,7 +1612,7 @@ export default function Home() {
                 //   1 missing → "almost there" warmth
                 // Subhead is shared across re-fire states (1 or 2 missing) and
                 // reframed on first-fire to focus on evaluation integrity.
-                const validKeys = ["target_user", "workflow", "core_feature"];
+                const validKeys = ["target_user", "use_case", "mechanism"];
                 const missingCount = Array.isArray(specificityGate.missing_elements)
                   ? specificityGate.missing_elements.filter((k) => validKeys.includes(k)).length
                   : 3;

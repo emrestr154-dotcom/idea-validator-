@@ -422,18 +422,22 @@ export default function EvaluationView({
                 // Static prompts mapped to the 3-value Haiku-aligned enum.
                 // Used for the LOW callout bullets when thin_dimensions is
                 // present in the response payload.
+                // Enum (locked May 4, 2026 pre-B10a Haiku calibration revisit):
+                //   target_user = adoption unit (not necessarily literal payer)
+                //   use_case    = job/pain/task/workflow under one umbrella
+                //   mechanism   = how the product intervenes
                 const THIN_DIMENSION_PROMPTS = {
                   target_user: {
                     title: "Who exactly is this for?",
                     body: "Name the user role, buyer, or situation.",
                   },
-                  workflow: {
-                    title: "What workflow or pain point does it handle?",
-                    body: "Name the specific job, not just the category.",
+                  use_case: {
+                    title: "What use case does it address?",
+                    body: "Name the specific task, pain, or workflow — not just the category.",
                   },
-                  core_feature: {
-                    title: "What does the product actually do first?",
-                    body: "Name the concrete feature or mechanism.",
+                  mechanism: {
+                    title: "How does the product intervene?",
+                    body: "Name the concrete feature, process, or method.",
                   },
                 };
 
@@ -446,7 +450,7 @@ export default function EvaluationView({
                   const filtered = arr.filter((d) => THIN_DIMENSION_PROMPTS[d]);
                   if (filtered.length > 0) return filtered;
                   // Fallback: render all three prompts
-                  return ["target_user", "workflow", "core_feature"];
+                  return ["target_user", "use_case", "mechanism"];
                 })();
 
                 // Helper: render a single horizontal-bar metric row in the
