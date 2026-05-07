@@ -39,7 +39,7 @@ fi
 
 BASELINE_FILE="$REPO_ROOT/.prompt-gate-baseline.txt"
 
-DISEASE_REGEX='RIGHT[[:space:]]*(summary|opening|opening:|\(|:)|Example[[:space:]]+shape:|Right[[:space:]]+way:|GOOD[[:space:]]+opening|GOOD[[:space:]]*\('
+DISEASE_REGEX='RIGHT[[:space:]]*(summary|opening|opening:|\(|:)|Example[[:space:]]+shape:|Right[[:space:]]+way:|GOOD[[:space:]]+opening|GOOD[[:space:]]*\(|Example[[:space:]]+[A-Z][[:space:]]*[-—:]'
 ANTICOPY_REGEX='do NOT copy|study these but|use as inspiration|illustrative only|non-canonical|anti-copy|do not template'
 PROXIMITY_LINES=25
 
@@ -57,6 +57,8 @@ classify() {
   line="$1"
   if echo "$line" | grep -qiE 'Example[[:space:]]+shape'; then
     echo "example_shape"
+  elif echo "$line" | grep -qE 'Example[[:space:]]+[A-Z][[:space:]]*[-—:]'; then
+    echo "example_label"
   elif echo "$line" | grep -qiE 'RIGHT'; then
     echo "right"
   elif echo "$line" | grep -qiE 'GOOD'; then
@@ -71,6 +73,7 @@ category_pattern() {
     right) echo 'RIGHT[[:space:]]*(summary|opening|opening:|\(|:)|Right[[:space:]]+way:' ;;
     good)  echo 'GOOD[[:space:]]+opening|GOOD[[:space:]]*\(' ;;
     example_shape) echo 'Example[[:space:]]+shape:' ;;
+    example_label) echo 'Example[[:space:]]+[A-Z][[:space:]]*[-—:]' ;;
     *) echo '' ;;
   esac
 }
