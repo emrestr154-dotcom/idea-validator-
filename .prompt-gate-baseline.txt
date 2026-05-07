@@ -1,0 +1,23 @@
+# ─────────────────────────────────────────────────────────────────────
+# Prompt-gate baseline — grandfathered singular-canonical patterns
+# ─────────────────────────────────────────────────────────────────────
+# Generated: Bundle 0 install
+# Reference: execution-plan-v5.1.md, NarrativeContract V8-LOCKED §3.X
+#
+# Each entry identifies a singular-canonical example pattern present
+# in the codebase at install time. The pre-commit gate treats these
+# as WARN-on-existing — does not block them, tracks as known disease.
+#
+# Format: file|sig12|description
+#
+# Lifecycle:
+#   - Entries are grandfathered until removed.
+#   - When a bundle ships a cure (e.g., Bundle 6 fixing F17), remove
+#     the corresponding entry as part of the cure commit.
+#   - To grandfather a new pattern manually (rare), copy the file|sig|
+#     desc line from the hook's BLOCK output and append below.
+# ─────────────────────────────────────────────────────────────────────
+
+src/lib/services/prompt-stage1.js|eeb3e90249ad|line 86: GOOD (provisional throughout): "Category inferred from limited input; search executed against dental
+src/lib/services/prompt-stage2c.js|502e544583be|line 108: RIGHT summary opening: "Your 8 years of software engineering experience, including building enterpri
+src/lib/services/prompt.js|26c49af5a5be|line 541: - GOOD (Trust bottleneck): "Clinical trust drives this timeline more than the build itself. Even wit
