@@ -3,9 +3,23 @@
 // ============================================
 // Searches GitHub repositories for real projects matching the idea.
 // Returns: repo name, description, stars, URL, language, last updated.
+//
+// Bundle 3.75 (Layer E mitigation): when IDEALOOP_USE_FIXTURES=1 is set
+// on the running Next.js server, returns cached results from
+// runners/fixtures/data/ instead of hitting GitHub. Production
+// (Vercel): env var unset, this module behaves identically to
+// pre-Bundle-3.75. Real users always get fresh search results; the
+// cache only activates for local verification runs.
+
+import { readFixture, writeFixture, isFixtureMode } from "./fixture-store.js";
 
 export async function searchGitHub(query) {
   try {
+    if (isFixtureMode()) {
+      const cached = readFixture("github", query);
+      if (cached) return cached;
+    }
+
     const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=5`;
 
     const headers = {
@@ -27,7 +41,7 @@ export async function searchGitHub(query) {
 
     const data = await response.json();
 
-    return (data.items || []).slice(0, 5).map((repo) => ({
+    const results = (data.items || []).slice(0, 5).map((repo) => ({
       name: repo.full_name,
       description: repo.description || "No description",
       stars: repo.stargazers_count,
@@ -36,6 +50,12 @@ export async function searchGitHub(query) {
       updated: repo.updated_at,
       source: "github",
     }));
+
+    if (isFixtureMode()) {
+      writeFixture("github", query, results);
+    }
+
+    return results;
   } catch (error) {
     console.error("GitHub search failed:", error);
     return [];
