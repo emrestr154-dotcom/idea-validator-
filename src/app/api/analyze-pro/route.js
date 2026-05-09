@@ -502,6 +502,14 @@ ${JSON.stringify(stage2aResult)}`;
 
           sendEvent({ step: "stage2c_start", message: "Stage 2c: Synthesizing summary and failure risks..." });
 
+          // Bundle 3 / F3: compute overall_score early so Stage 2c's HARD RULE
+          // for low-band Summary openers can reference it. calculateOverallScore
+          // is a pure deterministic function on the metric scores; the same
+          // value is recomputed at assembly below (ev.overall_score = ...) —
+          // no risk of drift, and the duplicate cost is sub-millisecond.
+          // See prompt-stage2c.js HARD RULE — LOW-BAND OPENING SENTENCE block.
+          const overallScoreForStage2c = calculateOverallScore(ev);
+
           const stage2cUserMessage = `${userProfile}
 
 USER'S AI PRODUCT IDEA:
@@ -521,6 +529,7 @@ ${JSON.stringify({
             technical_complexity: ev.technical_complexity,
             evidence_strength: ev.evidence_strength,
             marketplace_note: ev.marketplace_note,
+            overall_score: overallScoreForStage2c,
           })}`;
 
           const stage2cResponse = await client.messages.create({
