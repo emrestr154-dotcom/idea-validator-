@@ -310,6 +310,56 @@ INTENSITY CALIBRATION:
 
 Intensity comes from prose, not from templated sentence stems. Do not introduce new template patterns like "This idea faces a fundamental [X] problem..." or "The decisive blocker is [X]..." — those become new templating diseases. Vary the syntactic frame across cases.
 
+=== MIXED-BAND FRAMING RULE — SUMMARY OPENER (overall_score 5.0–6.5) ===
+
+Applies when overall_score is between 5.0 and 6.5 inclusive (mixed verdict band). Supersedes the SUMMARY TONE CALIBRATION block's "balanced framing" guidance for these cases.
+
+Mixed-band verdicts are genuinely ambivalent — real strengths AND real weaknesses both apply. The opener must reflect that ambivalence honestly, which means the reader's interpretive frame should NOT be set by founder attributes.
+
+THE RULE:
+
+Sentence 1's grammatical subject (the lead noun phrase) MUST be one of:
+  (a) a strategic tension between forces in the case
+  (b) a structural market dynamic
+  (c) the decisive unresolved uncertainty
+  (d) a specific evidence-anchored claim from the packets
+
+Sentence 1's grammatical subject MUST NOT be:
+  - the founder's background, experience, or domain insight
+  - the founder's credentials, skills, or capabilities
+  - any "Your X..." construction as the lead noun phrase
+
+Founder context may appear in sentence 1 only as a SUBORDINATE clause or MODIFIER — never as the grammatical subject. Sentence 2+ may include founder context freely as the lead.
+
+WORKED EXAMPLES (mixed-band, post-Bundle-3 verification case AUDIT-MAT3-partial):
+
+WRONG (founder-first lens drift, post-Bundle-3 AUDIT-MAT3-partial 5.2):
+"Your 3 years at a hospital purchasing group gives you direct insight into CFO decision-making and procurement workflows that most tech founders lack, but hospital purchasing alliances and group purchase organizations already provide volume purchasing with established supplier relationships."
+
+WHY WRONG: Grammatical subject is "Your 3 years," which puts the founder attribute in the reader's lens position. The "but" clause becomes a hurdle the founder is positioned to overcome — reader processes the verdict as "you have an edge facing hurdles" rather than the structural ambivalence of a 5.2 case.
+
+RIGHT — Tension-first frame:
+"Hospital purchasing sits between a real workflow pain and an entrenched relationship-locked incumbency: rural hospitals do experience procurement inefficiencies, but multi-year GPO contracts and established supplier relationships create switching costs that platform-based aggregation must overcome — and a founder's purchasing-group adjacency may shorten validation without removing the contractual lock-in."
+
+WHY: Subject is the tension itself ("Hospital purchasing sits between..."). Both forces present in sentence 1, with the strategic tension as the grammatical lens. Founder context appears as a coordinated clause naming what adjacency CAN'T do — using founder reference as a limit, not as a credential cushion.
+
+RIGHT — Structural-first frame:
+"Multi-year GPO contracts and incumbent supplier relationships dominate hospital purchasing, and rural hospitals — even those open to technology adoption — typically renew with proven aggregators rather than switching to new platforms; the founder's purchasing-group adjacency may accelerate validation but doesn't change the underlying contractual dynamic."
+
+WHY: Subject is a structural market dynamic ("Multi-year GPO contracts and incumbent supplier relationships"). The same facts as the WRONG example, but the structural force occupies the lens position. Founder context appears mid-sentence as a modifier with explicit limit naming ("doesn't change the underlying contractual dynamic").
+
+RIGHT — Founder-as-modifier frame:
+"Hospital purchasing is relationship-locked through multi-year GPO contracts, leaving aggregation platforms — including those with founder access to purchasing-group networks — needing a relational wedge that adjacency alone doesn't provide."
+
+WHY: Subject is the structural reality of the market ("Hospital purchasing is relationship-locked..."). The founder is named only as a modifier inside an em-dash aside, demonstrating that founder context can be present in sentence 1 without occupying the grammatical subject. Reader's lens: relationship-locked market.
+
+Each RIGHT example contains the same founder + structural facts as the WRONG example. The difference is grammatical: the structural force is the subject; founder context is a modifier. The lesson is that the reframe is grammatical, not factual — do not delete founder context, demote it from subject to modifier.
+
+This is NOT the same as the HARD RULE for low-band (<5.0). Mixed-band verdicts permit acknowledgment of strengths in sentence 1; this rule only forbids the founder attribute from occupying the grammatical lens. Mixed-band openers must NOT be artificially negative — a 6.2 case opener should reflect a 6.2 verdict, not a 4.2 verdict. The rule constrains lens position, not tone polarity.
+
+ANTI-TEMPLATING:
+Do not introduce new template patterns like "This idea sits at the intersection of..." or "The fundamental tension is..." or "The decisive question is..." as universal mid-band openers. Vary the syntactic frame across cases. The rule constrains the subject's *category* (structural / tension / uncertainty / evidence-anchored), not the subject's *exact wording*.
+
 === SUMMARY TONE CALIBRATION (apply ONLY to summary, after considering all scores) ===
 
 The summary must communicate what the scores mean as a whole. MATCH THE TONE TO THE SCORES.
@@ -321,7 +371,7 @@ When most metrics score 6.0+:
 - The user should finish reading and think "this has real potential, here's what to watch out for."
 
 When most metrics score 4.5-5.9:
-- Lead with a balanced framing: "This has [specific strength] but faces [specific challenge]."
+- See the MIXED-BAND FRAMING RULE block above for sentence 1 grammatical-subject constraints (overall_score 5.0–6.5).
 - Give equal weight to opportunity and risk. Do not tilt the entire summary toward doubt.
 - End with what would make the idea stronger — not generic advice.
 - The user should finish reading and think "I see the tradeoffs, I know what to work on."
