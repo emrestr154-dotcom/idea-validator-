@@ -941,8 +941,14 @@ Use the following evidence anchors to identify which archetype fires:
   D (capital/runway): idea requires substantial pre-revenue investment; profile shows no specific capital-formation infrastructure.
   E (sales motion): idea requires founder-led sales motion; profile shows no specific sales motion experience matching the case requirement.
 
-When two archetypes appear to fire, pick the one whose binding-constraint resolution unblocks the EARLIEST meaningful validation step (per the contextual priority logic).
+When two archetypes appear to fire, compare them against the per-archetype 
+evidence patterns in C5. Select the archetype whose C5 evidence anchors most 
+directly describe the concrete profile.education ↔ idea-requirement gap in 
+this case.
 
+If both archetypes' C5 anchors directly describe the case, use Section 1.1 
+case-truth to select the archetype tied to the most verdict-impactful 
+founder-task gap.
 DISTRIBUTION DISCIPLINE: across cases, evidence-driven selection should produce variation across archetypes A1/A2/A3/B/C/D/E. If a single archetype dominates output across diverse cases, the selection process has drifted toward template-matching rather than evidence-matching.
 
 === C9 — FREE PIPELINE ARCHETYPE PARITY ===
